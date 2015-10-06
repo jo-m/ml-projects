@@ -80,16 +80,16 @@ def transformFeatures(X):
 def score(Ypred, Yreal):
     return skmet.mean_squared_error(Ypred, Yreal) ** 0.5
 
-def reg_crossval(X, Y, regressor):
+def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(regressor, X[:,1:], Y, scoring=scorefun, cv=5)
+    scores = skcv.cross_val_score(model, X[:,1:], Y, scoring=scorefun, cv=4)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
-def reg_split(X, Y, regressor):
+def run_split(X, Y, model):
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.8)
     Xtrain, Xtest = Xtrain[:,1:], Xtest[:,1:]
-    pipe.fit(Xtrain, Ytrain)
-    Ypred = pipe.predict(Xtest)
+    model.fit(Xtrain, Ytrain)
+    Ypred = model.predict(Xtest)
     print "Split-score = %f" % score(Ypred, Ytest)
 
 def write_Y(Y):
@@ -98,12 +98,12 @@ def write_Y(Y):
     np.savetxt('results/Ypred.csv', Y,
                fmt='%d', delimiter=',', header='Id,Delay', comments='')
 
-def reg_validate(Xtrain, Ytrain, regressor):
-    pipe.fit(Xtrain[:,1:], Ytrain)
+def run_validate(Xtrain, Ytrain, model):
+    model.fit(Xtrain[:,1:], Ytrain)
 
     Xvalidate, _ = load_data(train=False)
     Xvalidate_ids = Xvalidate[:,0]
-    Yvalidate = pipe.predict(Xvalidate[:,1:])
+    Yvalidate = model.predict(Xvalidate[:,1:])
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
     write_Y(ret)
 
@@ -111,11 +111,15 @@ def reg_validate(Xtrain, Ytrain, regressor):
 def build_pipe():
     scaler = StandardScaler()
     filter_ = SelectKBest(f_regression, k=10)
-    regressor = Lasso(alpha=2)
-    return Pipeline([('scaler', scaler), ('filter', filter_), ('reg', regressor)])
+    regressor = Lasso()
+    return Pipeline([
+        ('scaler', scaler),
+        ('filter', filter_),
+        ('reg', regressor),
+    ])
 
 Xtrain, Ytrain = load_data()
 pipe = build_pipe()
-reg_crossval(Xtrain, Ytrain, pipe)
-reg_split(Xtrain, Ytrain, pipe)
-reg_validate(Xtrain, Ytrain, pipe)
+run_crossval(Xtrain, Ytrain, pipe)
+run_split(Xtrain, Ytrain, pipe)
+run_validate(Xtrain, Ytrain, pipe)
