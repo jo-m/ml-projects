@@ -10,6 +10,7 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import f_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
@@ -37,6 +38,7 @@ cols = [
     "Y"
 ]
 
+# X will have ID as the first column
 def load_data(train=True):
     if train:
         fname = 'data/train.csv'
@@ -50,6 +52,7 @@ def load_data(train=True):
                        header=None,
                        names=names)
 
+    # warum log?
     data['L1Icache'] = np.log(data['L1Icache'])
     data['L1Dcache'] = np.log(data['L1Dcache'])
     data['L2Ucache'] = np.log(data['L2Ucache'])
@@ -72,10 +75,14 @@ def apply_mult(X, column1, column2, p=0):
     if (p>0):
         apply_polynominals(X, '%s_mul_%s' % (column1,column2),p )
 
-def transformFeatures(X):
-    apply_polynominals(X, 'A', 5)
-    apply_mult(X, 'hour', 'A', 2)
+# @param features is an array of indexes
+def transformFeatures(X, features):
+    # map categorical features to [0...n_values]
 
+    for index in features:
+        values = np.sort(list(set(X[:, index])))
+        for i in range(0, X.shape[0]):
+            X[i, index] = np.where(X[i, index] == values)[0]
     return X
 
 def score(Ypred, Yreal):
@@ -83,7 +90,7 @@ def score(Ypred, Yreal):
 
 def reg_crossval(X, Y, regressor):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(regressor, X[:,1:], Y, scoring=scorefun, cv=5)
+    scores = skcv.cross_val_score(regressor, X[:, 1:], Y, scoring=scorefun, cv=5)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
 def reg_split(X, Y, regressor):
@@ -112,11 +119,13 @@ def reg_validate(Xtrain, Ytrain, regressor):
 def build_pipe():
     scaler = StandardScaler()
     filter_ = SelectKBest(f_regression, k=10)
+    encoder = OneHotEncoder(categorical_features=[0, 9])
     regressor = Lasso(alpha=2)
-    return Pipeline([('scaler', scaler), ('filter', filter_), ('reg', regressor)])
+    return Pipeline([('scaler', scaler), ('OneHotEncoder', encoder), ('filter', filter_), ('reg', regressor)])
 
 Xtrain, Ytrain = load_data()
+Xtrain = transformFeatures(Xtrain, [1, 10])
 pipe = build_pipe()
 reg_crossval(Xtrain, Ytrain, pipe)
 reg_split(Xtrain, Ytrain, pipe)
-reg_validate(Xtrain, Ytrain, pipe)
+# reg_validate(Xtrain, Ytrain, pipe)
