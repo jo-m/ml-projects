@@ -131,7 +131,7 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     scaler = StandardScaler(with_mean=False)
     filter_ = SelectKBest(f_regression, k=10)
-    encoder = OneHotEncoder(categorical_features=[0, 9])
+    encoder = OneHotEncoder(categorical_features=[0, 9], sparse=False)
     regressor = Lasso()
     return Pipeline([
         ('encoder', encoder),
@@ -146,4 +146,3 @@ pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
-run_validate(Xtrain, Ytrain, pipe)
