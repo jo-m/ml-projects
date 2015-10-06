@@ -37,31 +37,30 @@ cols = [
     "Y"
 ]
 
-def load_data():
-    fname = 'data/train.csv'
+def load_data(train=True):
+    if train:
+        fname = 'data/train.csv'
+        names = cols
+    else:
+        fname = 'data/validate_and_test.csv'
+        names = cols[:-1]
+
     data = pd.read_csv(fname,
                        index_col=None,
                        header=None,
-                       names=cols)
+                       names=names)
 
     data['L1Icache'] = np.log(data['L1Icache'])
     data['L1Dcache'] = np.log(data['L1Dcache'])
     data['L2Ucache'] = np.log(data['L2Ucache'])
 
-    Y = data['Y']
-    del data['Y']
+    if train:
+        Y = data['Y'].as_matrix()
+        del data['Y']
+    else:
+        Y = None
 
-    return data.as_matrix(), Y.as_matrix()
-
-def train_test_split_pd(X, Y, train_size):
-    Xtrain, Xtest, Ytrain, Ytest = \
-        skcv.train_test_split(X, Y, train_size=train_size)
-    return (
-        pd.DataFrame(Xtrain, columns=X.columns),
-        pd.DataFrame(Xtest, columns=X.columns),
-        pd.DataFrame(Ytrain),
-        pd.DataFrame(Ytest),
-    )
+    return data.as_matrix(), Y
 
 def apply_polynominals(X, column, p=30):
     for i in range(2, p + 1):
@@ -79,14 +78,6 @@ def transformFeatures(X):
 
     return X
 
-
-def plot(X):
-    import matplotlib.pylab as plt
-    pltData =  np.hstack ( (np.log(Y),X) )
-    pltData= pltData[pltData[:,0].argsort()]
-    plt.plot(pltData,'.')
-    plt.show()
-
 def score(Ypred, Yreal):
     return skmet.mean_squared_error(Ypred, Yreal) ** 0.5
 
@@ -95,24 +86,37 @@ def reg_crossval(X, Y, regressor):
     scores = skcv.cross_val_score(regressor, X[:,1:], Y, scoring=scorefun, cv=5)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
-X, Y = load_data()
+def reg_split(X, Y, regressor):
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.8)
+    Xtrain, Xtest = Xtrain[:,1:], Xtest[:,1:]
+    pipe.fit(Xtrain, Ytrain)
+    Ypred = pipe.predict(Xtest)
+    print "Split-score = %f" % score(Ypred, Ytest)
 
-scaler = StandardScaler()
-filter_ = SelectKBest(f_regression, k=10)
-regressor = Lasso(alpha=2)
-pipe = Pipeline([('scaler', scaler), ('filter', filter_), ('reg', regressor)])
+def write_Y(Y):
+    if Y.shape[1] != 2:
+        raise 'Y has invalid shape!'
+    np.savetxt('results/Ypred.csv', Y,
+               fmt='%d', delimiter=',', header='Id,Delay', comments='')
 
-reg_crossval(X, Y, pipe)
+def reg_validate(Xtrain, Ytrain, regressor):
+    pipe.fit(Xtrain[:,1:], Ytrain)
 
-Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.8)
-Xtrain = Xtrain[:,1:]
-Xtest = Xtest[:,1:]
-pipe.fit(Xtrain, np.log(Ytrain))
-Ypred = pipe.predict(Xtest)
-print score(np.exp(Ypred), Ytest)
+    Xvalidate, _ = load_data(train=False)
+    Xvalidate_ids = Xvalidate[:,0]
+    Yvalidate = pipe.predict(Xvalidate[:,1:])
+    ret = np.vstack((Xvalidate_ids, Yvalidate)).T
+    write_Y(ret)
 
-# separate the id column from X
-# Xtrain does not at all need id
-# Xtrain = Xtrain[:,1:]
-# Xtest_ids = Xtest[:,0]
-# Xtest = Xtest[:,1:]
+
+def build_pipe():
+    scaler = StandardScaler()
+    filter_ = SelectKBest(f_regression, k=10)
+    regressor = Lasso(alpha=2)
+    return Pipeline([('scaler', scaler), ('filter', filter_), ('reg', regressor)])
+
+Xtrain, Ytrain = load_data()
+pipe = build_pipe()
+reg_crossval(Xtrain, Ytrain, pipe)
+reg_split(Xtrain, Ytrain, pipe)
+reg_validate(Xtrain, Ytrain, pipe)
