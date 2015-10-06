@@ -17,20 +17,20 @@ import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
 
-# A Width - 2,4,6,8
-# B ROB size - 32 to 160
-# C IQ size - 8 to 80
-# D LSQ size - 8 to 80
-# E RF sizes - 40 to 160
-# F RF read ports - 2 to 16
-# G RF write ports - 1 to 8
-# H Gshare size -  1K to 32K
-# I BTB size - 256 to 1024
-# J Branches allowed - 8,16,24,32
-# K L1 Icache size - 64 to 1024
-# L L1 Dcache size - 64 to 1024
-# M L2 Ucache size- 512 to 8K
-# N Depth - 9 to 36
+#  0 A Width - 2,4,6,8
+#  1 B ROB size - 32 to 160
+#  2 C IQ size - 8 to 80
+#  3 D LSQ size - 8 to 80
+#  4 E RF sizes - 40 to 160
+#  5 F RF read ports - 2 to 16
+#  6 G RF write ports - 1 to 8
+#  7 H Gshare size -  1K to 32K
+#  8 I BTB size - 256 to 1024
+#  9 J Branches allowed - 8,16,24,32
+# 10 K L1 Icache size - 64 to 1024
+# 11 L L1 Dcache size - 64 to 1024
+# 12 M L2 Ucache size- 512 to 8K
+# 13 N Depth - 9 to 36
 
 cols = [
     "id",
@@ -131,7 +131,9 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     scaler = StandardScaler(with_mean=False)
     filter_ = SelectKBest(f_regression, k=10)
-    encoder = OneHotEncoder(categorical_features=[0, 9], sparse=False)
+    encoder = OneHotEncoder(categorical_features=[0, 9],
+                            n_values=[8 + 1, 32 + 1],
+                            sparse=False)
     regressor = Lasso()
     return Pipeline([
         ('encoder', encoder),
@@ -146,3 +148,4 @@ pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
+run_validate(Xtrain, Ytrain, pipe)
