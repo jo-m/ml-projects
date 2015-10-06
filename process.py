@@ -117,11 +117,11 @@ def reg_validate(Xtrain, Ytrain, regressor):
 
 
 def build_pipe():
-    scaler = StandardScaler()
+    scaler = StandardScaler(with_mean=False)
     filter_ = SelectKBest(f_regression, k=10)
     encoder = OneHotEncoder(categorical_features=[0, 9])
     regressor = Lasso(alpha=2)
-    return Pipeline([('scaler', scaler), ('OneHotEncoder', encoder), ('filter', filter_), ('reg', regressor)])
+    return Pipeline([('OneHotEncoder', encoder), ('scaler', scaler), ('filter', filter_), ('reg', regressor)])
 
 Xtrain, Ytrain = load_data()
 Xtrain = transformFeatures(Xtrain, [1, 10])
