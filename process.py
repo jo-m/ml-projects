@@ -6,6 +6,8 @@ import pandas as pd
 
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
+from sklearn.linear_model import LinearRegression
+from sklearn.grid_search import GridSearchCV
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import f_regression
 from sklearn.pipeline import Pipeline
@@ -15,20 +17,20 @@ import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
 
-# Width - 2,4,6,8
-# ROB size - 32 to 160
-# IQ size - 8 to 80
-# LSQ size - 8 to 80
-# RF sizes - 40 to 160
-# RF read ports - 2 to 16
-# RF write ports - 1 to 8
-# Gshare size -  1K to 32K
-# BTB size - 256 to 1024
-# Branches allowed - 8,16,24,32
-# L1 Icache size - 64 to 1024
-# L1 Dcache size - 64 to 1024
-# L2 Ucache size- 512 to 8K
-# Depth - 9 to 36
+# A Width - 2,4,6,8
+# B ROB size - 32 to 160
+# C IQ size - 8 to 80
+# D LSQ size - 8 to 80
+# E RF sizes - 40 to 160
+# F RF read ports - 2 to 16
+# G RF write ports - 1 to 8
+# H Gshare size -  1K to 32K
+# I BTB size - 256 to 1024
+# J Branches allowed - 8,16,24,32
+# K L1 Icache size - 64 to 1024
+# L L1 Dcache size - 64 to 1024
+# M L2 Ucache size- 512 to 8K
+# N Depth - 9 to 36
 
 cols = [
     "id",
@@ -52,10 +54,8 @@ def load_data(train=True):
                        header=None,
                        names=names)
 
-    # warum log?
-    data['L1Icache'] = np.log(data['L1Icache'])
-    data['L1Dcache'] = np.log(data['L1Dcache'])
-    data['L2Ucache'] = np.log(data['L2Ucache'])
+    data['Gshare'] = np.log(data['Gshare'])
+    data['BTB'] = np.log(data['BTB'])
 
     if train:
         Y = data['Y'].as_matrix()
@@ -88,16 +88,16 @@ def transformFeatures(X, features):
 def score(Ypred, Yreal):
     return skmet.mean_squared_error(Ypred, Yreal) ** 0.5
 
-def reg_crossval(X, Y, regressor):
+def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(regressor, X[:, 1:], Y, scoring=scorefun, cv=5)
+    scores = skcv.cross_val_score(model, X[:,1:], Y, scoring=scorefun, cv=4)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
-def reg_split(X, Y, regressor):
+def run_split(X, Y, model):
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.8)
     Xtrain, Xtest = Xtrain[:,1:], Xtest[:,1:]
-    pipe.fit(Xtrain, Ytrain)
-    Ypred = pipe.predict(Xtest)
+    model.fit(Xtrain, Ytrain)
+    Ypred = model.predict(Xtest)
     print "Split-score = %f" % score(Ypred, Ytest)
 
 def write_Y(Y):
@@ -106,26 +106,44 @@ def write_Y(Y):
     np.savetxt('results/Ypred.csv', Y,
                fmt='%d', delimiter=',', header='Id,Delay', comments='')
 
-def reg_validate(Xtrain, Ytrain, regressor):
-    pipe.fit(Xtrain[:,1:], Ytrain)
+def run_validate(Xtrain, Ytrain, model):
+    model.fit(Xtrain[:,1:], Ytrain)
 
     Xvalidate, _ = load_data(train=False)
     Xvalidate_ids = Xvalidate[:,0]
-    Yvalidate = pipe.predict(Xvalidate[:,1:])
+    Yvalidate = model.predict(Xvalidate[:,1:])
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
     write_Y(ret)
 
+def run_gridsearch(X, Y, model):
+    parameters = {
+        # 'kernel': ('linear', 'rbf'),
+        'filter__k':  (1, 2, 5, 10, 'all'),
+        'reg__alpha': (0.1, 0.2, 0.5, 1, 2, 5, 6, 7, 8, 9, 10),
+    }
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=4)
+    grid.fit(X[:,1:], Y)
+    for p in parameters.keys():
+        print 'Gridseach: param %s = %s' % (
+            p, str(grid.best_estimator_.get_params()[p]))
+    return grid.best_estimator_
 
 def build_pipe():
     scaler = StandardScaler(with_mean=False)
     filter_ = SelectKBest(f_regression, k=10)
     encoder = OneHotEncoder(categorical_features=[0, 9])
-    regressor = Lasso(alpha=2)
-    return Pipeline([('OneHotEncoder', encoder), ('scaler', scaler), ('filter', filter_), ('reg', regressor)])
+    regressor = Lasso()
+    return Pipeline([
+        ('encoder', encoder),
+        ('scaler', scaler),
+        ('filter', filter_),
+        ('reg', regressor),
+    ])
 
 Xtrain, Ytrain = load_data()
 Xtrain = transformFeatures(Xtrain, [1, 10])
 pipe = build_pipe()
-reg_crossval(Xtrain, Ytrain, pipe)
-reg_split(Xtrain, Ytrain, pipe)
-# reg_validate(Xtrain, Ytrain, pipe)
+pipe = run_gridsearch(Xtrain, Ytrain, pipe)
+run_crossval(Xtrain, Ytrain, pipe)
+run_split(Xtrain, Ytrain, pipe)
+run_validate(Xtrain, Ytrain, pipe)
