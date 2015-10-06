@@ -6,6 +6,8 @@ import pandas as pd
 
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
+from sklearn.linear_model import LinearRegression
+from sklearn.grid_search import GridSearchCV
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import f_regression
 from sklearn.pipeline import Pipeline
@@ -107,6 +109,18 @@ def run_validate(Xtrain, Ytrain, model):
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
     write_Y(ret)
 
+def run_gridsearch(X, Y, model):
+    parameters = {
+        # 'kernel': ('linear', 'rbf'),
+        'filter__k':  (1, 2, 5, 10, 'all'),
+        'reg__alpha': (0.1, 0.2, 0.5, 1, 2, 5, 6, 7, 8, 9, 10),
+    }
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=4)
+    grid.fit(X[:,1:], Y)
+    for p in parameters.keys():
+        print 'Gridseach: param %s = %s' % (
+            p, str(grid.best_estimator_.get_params()[p]))
+    return grid.best_estimator_
 
 def build_pipe():
     scaler = StandardScaler()
@@ -120,6 +134,7 @@ def build_pipe():
 
 Xtrain, Ytrain = load_data()
 pipe = build_pipe()
+pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
