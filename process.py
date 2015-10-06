@@ -50,9 +50,8 @@ def load_data(train=True):
                        header=None,
                        names=names)
 
-    data['L1Icache'] = np.log(data['L1Icache'])
-    data['L1Dcache'] = np.log(data['L1Dcache'])
-    data['L2Ucache'] = np.log(data['L2Ucache'])
+    data['Gshare'] = np.log(data['Gshare'])
+    data['BTB'] = np.log(data['BTB'])
 
     if train:
         Y = data['Y'].as_matrix()
