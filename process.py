@@ -76,10 +76,9 @@ def apply_mult(X, column1, column2, p=0):
         apply_polynominals(X, '%s_mul_%s' % (column1,column2),p )
 
 # @param features is an array of indexes
-def transformFeatures(X, features):
+def transform_features(X):
     # map categorical features to [0...n_values]
-
-    for index in features:
+    for index in [1, 10]:
         values = np.sort(list(set(X[:, index])))
         for i in range(0, X.shape[0]):
             X[i, index] = np.where(X[i, index] == values)[0]
@@ -110,6 +109,7 @@ def run_validate(Xtrain, Ytrain, model):
     model.fit(Xtrain[:,1:], Ytrain)
 
     Xvalidate, _ = load_data(train=False)
+    Xvalidate = transform_features(Xvalidate)
     Xvalidate_ids = Xvalidate[:,0]
     Yvalidate = model.predict(Xvalidate[:,1:])
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
@@ -132,9 +132,8 @@ def build_pipe():
     scaler = StandardScaler(with_mean=False)
     filter_ = SelectKBest(f_regression, k=10)
     encoder = OneHotEncoder(categorical_features=[0, 9],
-                            n_values=[8 + 1, 32 + 1],
                             sparse=False)
-    regressor = Lasso()
+    regressor = Ridge()
     return Pipeline([
         ('encoder', encoder),
         ('scaler', scaler),
@@ -143,7 +142,7 @@ def build_pipe():
     ])
 
 Xtrain, Ytrain = load_data()
-Xtrain = transformFeatures(Xtrain, [1, 10])
+Xtrain = transform_features(Xtrain)
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
