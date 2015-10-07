@@ -4,6 +4,7 @@
 import numpy as np
 import pandas as pd
 
+from utils import *
 from sklearn.linear_model import Ridge
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import LinearRegression
@@ -56,7 +57,6 @@ def load_data(train=True):
 
     data['Gshare'] = np.log(data['Gshare'])
     data['BTB'] = np.log(data['BTB'])
-
     if train:
         Y = data['Y'].as_matrix()
         del data['Y']
@@ -64,6 +64,7 @@ def load_data(train=True):
         Y = None
 
     return data.as_matrix(), Y
+
 
 def apply_polynominals(X, column, p=30):
     for i in range(2, p + 1):
@@ -75,7 +76,6 @@ def apply_mult(X, column1, column2, p=0):
     if (p>0):
         apply_polynominals(X, '%s_mul_%s' % (column1,column2),p )
 
-# @param features is an array of indexes
 def transform_features(X):
     # map categorical features to [0...n_values]
     for index in [1, 10]:
@@ -146,5 +146,5 @@ Xtrain = transform_features(Xtrain)
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
-run_split(Xtrain, Ytrain, pipe)
+# run_split(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
