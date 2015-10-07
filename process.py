@@ -118,10 +118,15 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__kernel': ['linear', 'rbf', 'poly'],
-        # 'reg__alpha': (0.1, 0.2, 0.5, 1),
+        'reg__kernel': ['rbf', 'poly', 'sigmoid'],
+        # 'reg__C': np.arange(0, 0.5, 0.),
+        'reg__epsilon': [0, 0.5, 1],
+        'reg__degree' : range(2,10,1),
+        'reg__gamma' : np.arange(0, 0.3, 0.1),
+        'reg__coef0' : np.arange(0, 20, 0.1),
+        'reg__shrinking': [False, True],
     }
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=4)
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=8)
     grid.fit(X[:,1:], Y)
     for p in parameters.keys():
         print 'Gridseach: param %s = %s' % (
@@ -135,7 +140,7 @@ def build_pipe():
     regressor = SVR()
     print regressor.get_params()
     return Pipeline([
-        ('encoder', encoder),
+        # ('encoder', encoder),
         ('scaler', scaler),
         ('reg', regressor),
     ])
