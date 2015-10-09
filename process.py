@@ -56,10 +56,10 @@ def load_data(train=True):
                        header=None,
                        names=names)
 
-    data['Gshare'] = np.log(data['Gshare'])
-    data['BTB'] = np.log(data['BTB'])
+    # data['Gshare'] = np.log(data['Gshare'])
+    # data['BTB'] = np.log(data['BTB'])
     if train:
-        Y = data['Y'].as_matrix()
+        Y = np.log(data['Y'].as_matrix())
         del data['Y']
     else:
         Y = None
@@ -86,7 +86,7 @@ def transform_features(X):
     return X
 
 def score(Ypred, Yreal):
-    return skmet.mean_squared_error(Ypred, Yreal) ** 0.5
+    return skmet.mean_squared_error(np.exp(Ypred), np.exp(Yreal)) ** 0.5
 
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
@@ -112,21 +112,18 @@ def run_validate(Xtrain, Ytrain, model):
     Xvalidate, _ = load_data(train=False)
     Xvalidate = transform_features(Xvalidate)
     Xvalidate_ids = Xvalidate[:,0]
-    Yvalidate = model.predict(Xvalidate[:,1:])
+    Yvalidate = np.exp(model.predict(Xvalidate[:,1:]))
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
     write_Y(ret)
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__kernel': ['rbf', 'poly', 'sigmoid'],
-        # 'reg__C': np.arange(0, 0.5, 0.),
-        'reg__epsilon': [0, 0.5, 1],
-        'reg__degree' : range(2,10,1),
-        'reg__gamma' : np.arange(0, 0.3, 0.1),
-        'reg__coef0' : np.arange(0, 20, 0.1),
-        'reg__shrinking': [False, True],
+        'reg__kernel': ['linear'],
+        'reg__C': np.arange(0.1, 1, 0.1),
+        'reg__epsilon': [0, 0.5, 0.1],
     }
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=8)
+
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=4)
     grid.fit(X[:,1:], Y)
     for p in parameters.keys():
         print 'Gridseach: param %s = %s' % (
@@ -138,14 +135,15 @@ def build_pipe():
     encoder = OneHotEncoder(categorical_features=[0, 9],
                             sparse=False)
     regressor = SVR()
-    print regressor.get_params()
     return Pipeline([
-        # ('encoder', encoder),
+        ('encoder', encoder),
         ('scaler', scaler),
         ('reg', regressor),
     ])
 
 Xtrain, Ytrain = load_data()
+# plotFeatures(Xtrain[:, 1:], Ytrain)
+# exit()
 Xtrain = transform_features(Xtrain)
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
