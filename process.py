@@ -6,9 +6,8 @@ import pandas as pd
 
 from utils import *
 
-# from sklearn.kernel_ridge import KernelRidge
-
 from sklearn.svm import SVR
+from sklearn.linear_model import Ridge
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import f_regression
@@ -118,12 +117,10 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__kernel': ['linear'],
-        'reg__C': np.arange(0.1, 1, 0.1),
-        'reg__epsilon': [0, 0.5, 0.1],
+        'reg__alpha': np.arange(4.01, 4.2, 0.001),
     }
 
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=4)
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
     grid.fit(X[:,1:], Y)
     for p in parameters.keys():
         print 'Gridseach: param %s = %s' % (
@@ -134,7 +131,7 @@ def build_pipe():
     scaler = StandardScaler(with_mean=False)
     encoder = OneHotEncoder(categorical_features=[0, 9],
                             sparse=False)
-    regressor = SVR()
+    regressor = Ridge()
     return Pipeline([
         ('encoder', encoder),
         ('scaler', scaler),
