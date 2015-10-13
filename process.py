@@ -119,7 +119,8 @@ def run_validate(Xtrain, Ytrain, model):
 def run_gridsearch(X, Y, model):
     parameters = {
         'reg__kernel': ['rbf'],
-        'reg__gamma': np.arange(0.02, 0.5, 0.01),
+        'reg__C': np.arange(2.1, 2.7, 0.01),
+        'reg__gamma': np.arange(0.01, 0.05, 0.01),
         'selector__k': [9]
     }
 
