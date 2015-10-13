@@ -8,12 +8,13 @@ from utils import *
 
 from sklearn.svm import SVR
 from sklearn.linear_model import Ridge
+from sklearn.svm import SVR
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.feature_selection import f_regression
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
@@ -117,7 +118,9 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__alpha': np.arange(4.01, 4.2, 0.001),
+        'reg__kernel': ['rbf'],
+        'reg__gamma': np.arange(0.02, 0.5, 0.01),
+        'selector__k': [9]
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -131,10 +134,17 @@ def build_pipe():
     scaler = StandardScaler(with_mean=False)
     encoder = OneHotEncoder(categorical_features=[0, 9],
                             sparse=False)
-    regressor = Ridge()
+    regressor = SVR()
+    selector = SelectKBest(f_regression)
+    # regressor.fit(Xtrain[:, 1:], Ytrain)
+    # print regressor.coef_
+    # plotStuff(regressor.coef_)
+    #
+    # exit()
     return Pipeline([
         ('encoder', encoder),
         ('scaler', scaler),
+        ('selector', selector),
         ('reg', regressor),
     ])
 
