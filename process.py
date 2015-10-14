@@ -6,13 +6,15 @@ import pandas as pd
 
 from utils import *
 
-from sklearn.kernel_ridge import KernelRidge
+from sklearn.svm import SVR
+from sklearn.linear_model import Ridge
+from sklearn.svm import SVR
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.feature_selection import f_regression
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
@@ -54,10 +56,10 @@ def load_data(train=True):
                        header=None,
                        names=names)
 
-    data['Gshare'] = np.log(data['Gshare'])
-    data['BTB'] = np.log(data['BTB'])
+    # data['Gshare'] = np.log(data['Gshare'])
+    # data['BTB'] = np.log(data['BTB'])
     if train:
-        Y = data['Y'].as_matrix()
+        Y = np.log(data['Y'].as_matrix())
         del data['Y']
     else:
         Y = None
@@ -84,7 +86,7 @@ def transform_features(X):
     return X
 
 def score(Ypred, Yreal):
-    return skmet.mean_squared_error(Ypred, Yreal) ** 0.5
+    return skmet.mean_squared_error(np.exp(Ypred), np.exp(Yreal)) ** 0.5
 
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
@@ -110,16 +112,19 @@ def run_validate(Xtrain, Ytrain, model):
     Xvalidate, _ = load_data(train=False)
     Xvalidate = transform_features(Xvalidate)
     Xvalidate_ids = Xvalidate[:,0]
-    Yvalidate = model.predict(Xvalidate[:,1:])
+    Yvalidate = np.exp(model.predict(Xvalidate[:,1:]))
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
     write_Y(ret)
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__kernel': ('linear', 'rbf', 'poly'),
-        'reg__alpha': (0.1, 0.2, 0.5, 1),
+        'reg__kernel': ['rbf'],
+        'reg__C': np.arange(2.1, 2.7, 0.01),
+        'reg__gamma': np.arange(0.01, 0.05, 0.01),
+        'selector__k': [9]
     }
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=4)
+
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
     grid.fit(X[:,1:], Y)
     for p in parameters.keys():
         print 'Gridseach: param %s = %s' % (
@@ -128,19 +133,20 @@ def run_gridsearch(X, Y, model):
 
 def build_pipe():
     scaler = StandardScaler(with_mean=False)
-    encoder = OneHotEncoder(categorical_features=[0, 9],
-                            sparse=False)
-    regressor = KernelRidge()
+    encoder = OneHotEncoder(categorical_features=[0, 9], sparse=False)
+    regressor = SVR(gamma=0.04, kernel='rbf', C=2.69)
+    selector = SelectKBest(f_regression, k=9)
     return Pipeline([
         ('encoder', encoder),
         ('scaler', scaler),
+        ('selector', selector),
         ('reg', regressor),
     ])
 
 Xtrain, Ytrain = load_data()
 Xtrain = transform_features(Xtrain)
 pipe = build_pipe()
-pipe = run_gridsearch(Xtrain, Ytrain, pipe)
+# pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
-# run_split(Xtrain, Ytrain, pipe)
+run_split(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
