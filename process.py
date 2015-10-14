@@ -7,14 +7,13 @@ import pandas as pd
 from utils import *
 
 from sklearn.svm import SVR
-from sklearn.linear_model import Ridge
-from sklearn.svm import SVR
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import f_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.feature_selection import f_regression
+from sklearn.ensemble import RandomForestRegressor
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
@@ -107,10 +106,7 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__kernel': ['rbf'],
-        'reg__C': np.arange(2.1, 2.7, 0.01),
-        'reg__gamma': np.arange(0.01, 0.05, 0.01),
-        'selector__k': [9]
+        'reg__n_estimators': [100, 150, 200, 250, 500, 1000],
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -123,10 +119,9 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     scaler = StandardScaler(with_mean=False)
     encoder = OneHotEncoder(categorical_features=[0, 9], sparse=False)
-    regressor = SVR(gamma=0.04, kernel='rbf', C=2.69)
+    regressor = RandomForestRegressor(n_estimators=200)
     selector = SelectKBest(f_regression, k=9)
     return Pipeline([
-        ('encoder', encoder),
         ('scaler', scaler),
         ('selector', selector),
         ('reg', regressor),
