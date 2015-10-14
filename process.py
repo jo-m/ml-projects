@@ -60,7 +60,7 @@ def load_data(train=True):
     else:
         Y = None
 
-    return data.as_matrix(), Y
+    return data.as_matrix().astype(float), Y
 
 def score(Ypred, Yreal):
     return skmet.mean_squared_error(np.exp(Ypred), np.exp(Yreal)) ** 0.5
