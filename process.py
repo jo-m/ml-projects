@@ -97,6 +97,8 @@ def run_validate(Xtrain, Ytrain, model):
 def run_gridsearch(X, Y, model):
     parameters = {
         'reg__n_estimators': [100, 150, 200, 250, 500, 1000],
+        'reg__bootstrap': [True, False],
+        'selector__k': [5, 6, 7, 8, 9, 10, 11, 12],
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
