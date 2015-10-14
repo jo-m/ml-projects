@@ -66,19 +66,8 @@ def load_data(train=True):
 
     return data.as_matrix(), Y
 
-
-def apply_polynominals(X, column, p=30):
-    for i in range(2, p + 1):
-        X['%s^%d' % (column, i)] = np.power(X[column], i)
-
-def apply_mult(X, column1, column2, p=0):
-    X['%s_mul_%s' % (column1,column2)] = \
-        X[column1] * X[column2]
-    if (p>0):
-        apply_polynominals(X, '%s_mul_%s' % (column1,column2),p )
-
 def transform_features(X):
-    # map categorical features to [0...n_values]
+    # map categorical features 1 and 10 to [0...n_values]
     for index in [1, 10]:
         values = np.sort(list(set(X[:, index])))
         for i in range(0, X.shape[0]):
