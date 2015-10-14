@@ -54,9 +54,6 @@ def load_data(train=True):
                        header=None,
                        names=names)
 
-    # data['Gshare'] = np.log(data['Gshare'])
-    # data['BTB'] = np.log(data['BTB'])
-
     if train:
         Y = np.log(data['Y'].as_matrix())
         del data['Y']
