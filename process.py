@@ -17,20 +17,22 @@ import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
 
-#  0 A Width - 2,4,6,8
-#  1 B ROB size - 32 to 160
-#  2 C IQ size - 8 to 80
-#  3 D LSQ size - 8 to 80
-#  4 E RF sizes - 40 to 160
-#  5 F RF read ports - 2 to 16
-#  6 G RF write ports - 1 to 8
-#  7 H Gshare size -  1K to 32K
-#  8 I BTB size - 256 to 1024
-#  9 J Branches allowed - 8,16,24,32
-# 10 K L1 Icache size - 64 to 1024
-# 11 L L1 Dcache size - 64 to 1024
-# 12 M L2 Ucache size- 512 to 8K
-# 13 N Depth - 9 to 36
+# no Col      Name    Values
+#      Importance
+#  0 A 0.2715 Width - 2,4,6,8
+#  1 B 0.0334 ROB size - 32 to 160
+#  2 C 0.0251 IQ size - 8 to 80
+#  3 D 0.1067 LSQ size - 8 to 80
+#  4 E 0.0286 RF sizes - 40 to 160
+#  5 F 0.0564 RF read ports - 2 to 16
+#  6 G 0.0202 RF write ports - 1 to 8
+#  7 H 0.0195 Gshare size -  1K to 32K
+#  8 I 0.0091 BTB size - 256 to 1024
+#  9 J 0.0143 Branches allowed - 8,16,24,32
+# 10 K 0.0146 L1 Icache size - 64 to 1024
+# 11 L 0.0142 L1 Dcache size - 64 to 1024
+# 12 M 0.0151 L2 Ucache size- 512 to 8K
+# 13 N 0.3707 Depth - 9 to 36
 
 cols = [
     "id",
