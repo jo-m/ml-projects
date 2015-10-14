@@ -12,7 +12,6 @@ from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import f_regression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
 from sklearn.ensemble import RandomForestRegressor
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
@@ -57,6 +56,7 @@ def load_data(train=True):
 
     # data['Gshare'] = np.log(data['Gshare'])
     # data['BTB'] = np.log(data['BTB'])
+
     if train:
         Y = np.log(data['Y'].as_matrix())
         del data['Y']
@@ -64,14 +64,6 @@ def load_data(train=True):
         Y = None
 
     return data.as_matrix(), Y
-
-def transform_features(X):
-    # map categorical features 1 and 10 to [0...n_values]
-    for index in [1, 10]:
-        values = np.sort(list(set(X[:, index])))
-        for i in range(0, X.shape[0]):
-            X[i, index] = np.where(X[i, index] == values)[0]
-    return X
 
 def score(Ypred, Yreal):
     return skmet.mean_squared_error(np.exp(Ypred), np.exp(Yreal)) ** 0.5
@@ -98,7 +90,6 @@ def run_validate(Xtrain, Ytrain, model):
     model.fit(Xtrain[:,1:], Ytrain)
 
     Xvalidate, _ = load_data(train=False)
-    Xvalidate = transform_features(Xvalidate)
     Xvalidate_ids = Xvalidate[:,0]
     Yvalidate = np.exp(model.predict(Xvalidate[:,1:]))
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
@@ -118,7 +109,6 @@ def run_gridsearch(X, Y, model):
 
 def build_pipe():
     scaler = StandardScaler(with_mean=False)
-    encoder = OneHotEncoder(categorical_features=[0, 9], sparse=False)
     regressor = RandomForestRegressor(n_estimators=200)
     selector = SelectKBest(f_regression, k=9)
     return Pipeline([
@@ -128,7 +118,6 @@ def build_pipe():
     ])
 
 Xtrain, Ytrain = load_data()
-Xtrain = transform_features(Xtrain)
 pipe = build_pipe()
 # pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
