@@ -6,9 +6,6 @@ import pandas as pd
 
 from utils import *
 
-from sklearn.svm import SVR
-from sklearn.linear_model import Ridge
-from sklearn.svm import SVR
 from sklearn.grid_search import GridSearchCV
 from sklearn.feature_selection import SelectKBest
 from sklearn.pipeline import Pipeline
@@ -17,6 +14,16 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.feature_selection import f_regression
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
+
+
+
+from lasagne.layers import DenseLayer
+from lasagne.layers import InputLayer
+from lasagne.layers import DropoutLayer
+from lasagne.nonlinearities import softmax
+from lasagne.updates import nesterov_momentum
+from nolearn.lasagne import NeuralNet
+
 
 
 #  0 A Width - 2,4,6,8
@@ -66,17 +73,6 @@ def load_data(train=True):
 
     return data.as_matrix(), Y
 
-
-def apply_polynominals(X, column, p=30):
-    for i in range(2, p + 1):
-        X['%s^%d' % (column, i)] = np.power(X[column], i)
-
-def apply_mult(X, column1, column2, p=0):
-    X['%s_mul_%s' % (column1,column2)] = \
-        X[column1] * X[column2]
-    if (p>0):
-        apply_polynominals(X, '%s_mul_%s' % (column1,column2),p )
-
 def transform_features(X):
     # map categorical features to [0...n_values]
     for index in [1, 10]:
@@ -90,12 +86,11 @@ def score(Ypred, Yreal):
 
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(model, X[:,1:], Y, scoring=scorefun, cv=4)
+    scores = skcv.cross_val_score(model, X, Y, scoring=scorefun, cv=10)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
 def run_split(X, Y, model):
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.8)
-    Xtrain, Xtest = Xtrain[:,1:], Xtest[:,1:]
     model.fit(Xtrain, Ytrain)
     Ypred = model.predict(Xtest)
     print "Split-score = %f" % score(Ypred, Ytest)
@@ -107,7 +102,7 @@ def write_Y(Y):
                fmt='%d', delimiter=',', header='Id,Delay', comments='')
 
 def run_validate(Xtrain, Ytrain, model):
-    model.fit(Xtrain[:,1:], Ytrain)
+    model.fit(Xtrain, Ytrain)
 
     Xvalidate, _ = load_data(train=False)
     Xvalidate = transform_features(Xvalidate)
@@ -116,45 +111,62 @@ def run_validate(Xtrain, Ytrain, model):
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
     write_Y(ret)
 
-def run_gridsearch(X, Y, model):
-    parameters = {
-        'reg__kernel': ['rbf'],
-        'reg__C': np.arange(2.1, 2.7, 0.01),
-        'reg__gamma': np.arange(0.01, 0.05, 0.01),
-        'selector__k': [9]
-    }
-
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
-    grid.fit(X[:,1:], Y)
-    for p in parameters.keys():
-        print 'Gridseach: param %s = %s' % (
-            p, str(grid.best_estimator_.get_params()[p]))
-    return grid.best_estimator_
-
-def build_pipe():
-    scaler = StandardScaler(with_mean=False)
-    encoder = OneHotEncoder(categorical_features=[0, 9],
-                            sparse=False)
-    regressor = SVR()
-    selector = SelectKBest(f_regression)
-    # regressor.fit(Xtrain[:, 1:], Ytrain)
-    # print regressor.coef_
-    # plotStuff(regressor.coef_)
-    #
-    # exit()
-    return Pipeline([
-        ('encoder', encoder),
-        ('scaler', scaler),
-        ('selector', selector),
-        ('reg', regressor),
-    ])
-
 Xtrain, Ytrain = load_data()
-# plotFeatures(Xtrain[:, 1:], Ytrain)
-# exit()
 Xtrain = transform_features(Xtrain)
-pipe = build_pipe()
-pipe = run_gridsearch(Xtrain, Ytrain, pipe)
-run_crossval(Xtrain, Ytrain, pipe)
-# run_split(Xtrain, Ytrain, pipe)
-run_validate(Xtrain, Ytrain, pipe)
+# cut Ids
+Xtrain = Xtrain[:, 1:]
+
+scaler = StandardScaler(with_mean=False)
+encoder = OneHotEncoder(categorical_features=[0, 9],
+                        sparse=False)
+
+selector = SelectKBest(f_regression, k=11)
+
+num_features = Xtrain.shape[1]
+
+
+layers0 = [('input', InputLayer),
+       ('dense0', DenseLayer),
+       ('dropout0', DropoutLayer),
+       ('dense1', DenseLayer),
+       ('dense2', DenseLayer),
+       ('dropout1', DropoutLayer),
+       ('dense3', DenseLayer),
+       ('output', DenseLayer)]
+
+params = dict(
+    layers=layers0,
+
+    dropout0_p=0.5,
+    dropout1_p=0.5,
+
+    dense0_num_units=2048,
+    dense1_num_units=3048,
+    dense2_num_units=1000,
+    dense3_num_units=200,
+
+    input_shape=(None, num_features),
+    output_num_units=1,
+    output_nonlinearity=softmax,
+
+    update=nesterov_momentum,
+    update_learning_rate=0.01,
+
+    eval_size=0.2,
+    verbose=1,
+    max_epochs=20,
+    regression=False
+)
+
+network = NeuralNet(**params)
+
+print "transform features"
+Xtrain = encoder.fit_transform(Xtrain)
+Xtrain = scaler.fit_transform(Xtrain)
+
+print "select best features"
+Xtrain = selector.fit_transform(Xtrain, Ytrain)
+
+print "run split score"
+run_split(Xtrain, Ytrain, network)
+run_validate(Xtrain, Ytrain, network)
