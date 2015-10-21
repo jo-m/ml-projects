@@ -63,8 +63,6 @@ def load_data(train=True):
                        header=None,
                        names=names)
 
-    # data['Gshare'] = np.log(data['Gshare'])
-    # data['BTB'] = np.log(data['BTB'])
     if train:
         Y = np.log(data['Y'].as_matrix())
         del data['Y']
@@ -75,10 +73,12 @@ def load_data(train=True):
 
 def transform_features(X):
     # map categorical features to [0...n_values]
-    for index in [1, 10]:
+    for index in [0, 9]:
         values = np.sort(list(set(X[:, index])))
         for i in range(0, X.shape[0]):
             X[i, index] = np.where(X[i, index] == values)[0]
+    X = encoder.fit_transform(X)
+    X = scaler.fit_transform(X)
     return X
 
 def score(Ypred, Yreal):
@@ -87,10 +87,10 @@ def score(Ypred, Yreal):
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
     scores = skcv.cross_val_score(model, X, Y, scoring=scorefun, cv=10)
-    print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
+    print 'C-V score =', np.mean(scores), '+/-', np.std(scores), 'min', np.min(scores)
 
 def run_split(X, Y, model):
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.8)
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.9)
     model.fit(Xtrain, Ytrain)
     Ypred = model.predict(Xtest)
     print "Split-score = %f" % score(Ypred, Ytest)
@@ -105,14 +105,20 @@ def run_validate(Xtrain, Ytrain, model):
     model.fit(Xtrain, Ytrain)
 
     Xvalidate, _ = load_data(train=False)
-    Xvalidate = transform_features(Xvalidate)
+
     Xvalidate_ids = Xvalidate[:,0]
-    Yvalidate = np.exp(model.predict(Xvalidate[:,1:]))
-    ret = np.vstack((Xvalidate_ids, Yvalidate)).T
+    Xvalidate_ids.shape = (Xvalidate_ids.shape[0], 1)
+
+    Xvalidate = Xvalidate[:,1:]
+
+    Xvalidate = transform_features(Xvalidate)
+    # Xvalidate = selector.transform(Xvalidate)
+
+    Yvalidate = np.exp(model.predict(Xvalidate))
+    ret = np.hstack((Xvalidate_ids, Yvalidate))
     write_Y(ret)
 
 Xtrain, Ytrain = load_data()
-Xtrain = transform_features(Xtrain)
 # cut Ids
 Xtrain = Xtrain[:, 1:]
 
@@ -122,51 +128,54 @@ encoder = OneHotEncoder(categorical_features=[0, 9],
 
 selector = SelectKBest(f_regression, k=11)
 
+
+
+print "transform features"
+Xtrain = transform_features(Xtrain)
+
+print "select best features"
+Xtrain = selector.fit_transform(Xtrain, Ytrain)
+
+
+
 num_features = Xtrain.shape[1]
 
-
 layers0 = [('input', InputLayer),
-       ('dense0', DenseLayer),
-       ('dropout0', DropoutLayer),
-       ('dense1', DenseLayer),
-       ('dense2', DenseLayer),
-       ('dropout1', DropoutLayer),
-       ('dense3', DenseLayer),
-       ('output', DenseLayer)]
+           ('dense0', DenseLayer),
+           ('dropout0', DropoutLayer),
+           ('dense1', DenseLayer),
+           # ('dense2', DenseLayer),
+           # ('dropout1', DropoutLayer),
+           # ('dense3', DenseLayer),
+           ('output', DenseLayer)]
 
 params = dict(
     layers=layers0,
 
-    dropout0_p=0.5,
-    dropout1_p=0.5,
+    dropout0_p=0.2,
+    # dropout1_p=0.2,
 
-    dense0_num_units=2048,
-    dense1_num_units=3048,
-    dense2_num_units=1000,
-    dense3_num_units=200,
+    dense0_num_units=num_features*2,
+    dense1_num_units=num_features*3,
+    # dense2_num_units=num_features*10,
+    # dense3_num_units=num_features,
 
     input_shape=(None, num_features),
     output_num_units=1,
-    output_nonlinearity=softmax,
 
     update=nesterov_momentum,
     update_learning_rate=0.01,
 
     eval_size=0.2,
     verbose=1,
-    max_epochs=20,
-    regression=False
+    max_epochs=100,
+    regression=True
 )
 
 network = NeuralNet(**params)
-
-print "transform features"
-Xtrain = encoder.fit_transform(Xtrain)
-Xtrain = scaler.fit_transform(Xtrain)
-
-print "select best features"
-Xtrain = selector.fit_transform(Xtrain, Ytrain)
-
-print "run split score"
-run_split(Xtrain, Ytrain, network)
-run_validate(Xtrain, Ytrain, network)
+print "run cross val"
+run_crossval(Xtrain, Ytrain, network)
+# print "run split score"
+# run_split(Xtrain, Ytrain, network)
+# print "run validation"
+# run_validate(Xtrain, Ytrain, network)
