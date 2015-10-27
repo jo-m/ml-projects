@@ -144,27 +144,27 @@ layers0 = [('input', InputLayer),
            ('dense0', DenseLayer),
            ('dropout0', DropoutLayer),
            ('dense1', DenseLayer),
-           # ('dense2', DenseLayer),
-           # ('dropout1', DropoutLayer),
-           # ('dense3', DenseLayer),
+           ('dense2', DenseLayer),
+           ('dropout1', DropoutLayer),
+           ('dense3', DenseLayer),
            ('output', DenseLayer)]
 
 params = dict(
     layers=layers0,
 
     dropout0_p=0.2,
-    # dropout1_p=0.2,
+    dropout1_p=0.2,
 
     dense0_num_units=num_features*2,
     dense1_num_units=num_features*3,
-    # dense2_num_units=num_features*10,
-    # dense3_num_units=num_features,
+    dense2_num_units=num_features*10,
+    dense3_num_units=num_features,
 
     input_shape=(None, num_features),
     output_num_units=1,
 
     update=nesterov_momentum,
-    update_learning_rate=0.01,
+    update_learning_rate=0.008,
 
     eval_size=0.2,
     verbose=1,
@@ -173,9 +173,9 @@ params = dict(
 )
 
 network = NeuralNet(**params)
-print "run cross val"
-run_crossval(Xtrain, Ytrain, network)
-# print "run split score"
-# run_split(Xtrain, Ytrain, network)
+# print "run cross val"
+# run_crossval(Xtrain, Ytrain, network)
+print "run split score"
+run_split(Xtrain, Ytrain, network)
 # print "run validation"
 # run_validate(Xtrain, Ytrain, network)
