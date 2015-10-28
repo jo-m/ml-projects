@@ -138,9 +138,28 @@ def run_validate(Xtrain, Ytrain, model):
     ret = np.hstack((Xvalidate_ids, Yvalidate))
     write_Y(ret)
 
+def run_gridsearch(X, Y, model):
+    parameters = {
+        'ann__update_learning_rate': [0.001, 0.003, 0.01],
+        'ann__update_momentum': [0.8, 0.1, 2],
+        'ann__dropout0_p': [0.1, 0.5, 0.2],
+        'ann__dense0_num_units': [10, 20, 25],
+        'ann__dense1_num_units': [5, 10, 20, 25],
+        'ann__regression': [True, False],
+    }
+
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
+    grid.fit(X[:,1:], Y)
+    for p in parameters.keys():
+        print 'Gridseach: param %s = %s' % (
+            p, str(grid.best_estimator_.get_params()[p]))
+    return grid.best_estimator_
+
+
 Xtrain, Ytrain = load_data()
 Xtrain = Xtrain[:, 1:]  # cut away Ids
 pipe = build_pipe()
+pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 
 print "run split score"
 run_split(Xtrain, Ytrain, pipe)
