@@ -15,15 +15,12 @@ from sklearn.feature_selection import f_regression
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 
-
-
 from lasagne.layers import DenseLayer
 from lasagne.layers import InputLayer
 from lasagne.layers import DropoutLayer
 from lasagne.nonlinearities import softmax
 from lasagne.updates import nesterov_momentum
 from nolearn.lasagne import NeuralNet
-
 
 
 #  0 A Width - 2,4,6,8
@@ -85,32 +82,25 @@ def build_ann(num_features):
                ('dense0', DenseLayer),
                ('dropout0', DropoutLayer),
                ('dense1', DenseLayer),
-               ('dense2', DenseLayer),
-               ('dropout1', DropoutLayer),
-               ('dense3', DenseLayer),
                ('output', DenseLayer)]
 
     params = dict(
         layers=layers0,
 
-        dropout0_p=0.2,
-        dropout1_p=0.2,
+        dropout0_p=0.1,
 
-        dense0_num_units=num_features*2,
-        dense1_num_units=num_features*3,
-        dense2_num_units=num_features*10,
-        dense3_num_units=num_features,
+        dense0_num_units=num_features*1,
+        dense1_num_units=num_features*2,
 
         input_shape=(None, num_features),
         output_num_units=1,
 
         update=nesterov_momentum,
-        update_learning_rate=0.008,
+        update_learning_rate=0.003,
+        update_momentum=0.8,
 
-        # eval_size=0.2,
-        # train_split=TrainSplit(eval_size=0.4)
-        verbose=1,
-        max_epochs=100,
+        # verbose=1,
+        max_epochs=300,
         regression=True
     )
 
