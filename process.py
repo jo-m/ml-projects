@@ -71,35 +71,68 @@ def load_data(train=True):
 
     return data.as_matrix(), Y
 
-def transform_features(X):
-    # map categorical features to [0...n_values]
-    for index in [0, 9]:
-        values = np.sort(list(set(X[:, index])))
-        for i in range(0, X.shape[0]):
-            X[i, index] = np.where(X[i, index] == values)[0]
-    X = encoder.fit_transform(X)
-    X = scaler.fit_transform(X)
-    return X
-
 def score(Ypred, Yreal):
     return skmet.mean_squared_error(np.exp(Ypred), np.exp(Yreal)) ** 0.5
-
-def run_crossval(X, Y, model):
-    scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(model, X, Y, scoring=scorefun, cv=10)
-    print 'C-V score =', np.mean(scores), '+/-', np.std(scores), 'min', np.min(scores)
-
-def run_split(X, Y, model):
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.9)
-    model.fit(Xtrain, Ytrain)
-    Ypred = model.predict(Xtest)
-    print "Split-score = %f" % score(Ypred, Ytest)
 
 def write_Y(Y):
     if Y.shape[1] != 2:
         raise 'Y has invalid shape!'
     np.savetxt('results/Ypred.csv', Y,
                fmt='%d', delimiter=',', header='Id,Delay', comments='')
+
+def build_ann(num_features):
+    layers0 = [('input', InputLayer),
+               ('dense0', DenseLayer),
+               ('dropout0', DropoutLayer),
+               ('dense1', DenseLayer),
+               ('dense2', DenseLayer),
+               ('dropout1', DropoutLayer),
+               ('dense3', DenseLayer),
+               ('output', DenseLayer)]
+
+    params = dict(
+        layers=layers0,
+
+        dropout0_p=0.2,
+        dropout1_p=0.2,
+
+        dense0_num_units=num_features*2,
+        dense1_num_units=num_features*3,
+        dense2_num_units=num_features*10,
+        dense3_num_units=num_features,
+
+        input_shape=(None, num_features),
+        output_num_units=1,
+
+        update=nesterov_momentum,
+        update_learning_rate=0.008,
+
+        # eval_size=0.2,
+        # train_split=TrainSplit(eval_size=0.4)
+        verbose=1,
+        max_epochs=100,
+        regression=True
+    )
+
+    return NeuralNet(**params)
+
+def build_pipe():
+    encoder = OneHotEncoder(categorical_features=[0, 9],
+                            sparse=False)
+    scaler = StandardScaler()
+    # originally we have 14 features, after trans. we have 20
+    ann = build_ann(20)
+    return Pipeline([
+        ('encoder', encoder),
+        ('scaler', scaler),
+        ('ann', ann),
+    ])
+
+def run_split(X, Y, model):
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.9)
+    model.fit(Xtrain, Ytrain)
+    Ypred = model.predict(Xtest)
+    print "Split-score = %f" % score(Ypred, Ytest)
 
 def run_validate(Xtrain, Ytrain, model):
     model.fit(Xtrain, Ytrain)
@@ -111,71 +144,15 @@ def run_validate(Xtrain, Ytrain, model):
 
     Xvalidate = Xvalidate[:,1:]
 
-    Xvalidate = transform_features(Xvalidate)
-    # Xvalidate = selector.transform(Xvalidate)
-
     Yvalidate = np.exp(model.predict(Xvalidate))
     ret = np.hstack((Xvalidate_ids, Yvalidate))
     write_Y(ret)
 
 Xtrain, Ytrain = load_data()
-# cut Ids
-Xtrain = Xtrain[:, 1:]
+Xtrain = Xtrain[:, 1:]  # cut away Ids
+pipe = build_pipe()
 
-scaler = StandardScaler(with_mean=False)
-encoder = OneHotEncoder(categorical_features=[0, 9],
-                        sparse=False)
-
-selector = SelectKBest(f_regression, k=11)
-
-
-
-print "transform features"
-Xtrain = transform_features(Xtrain)
-
-print "select best features"
-Xtrain = selector.fit_transform(Xtrain, Ytrain)
-
-
-
-num_features = Xtrain.shape[1]
-
-layers0 = [('input', InputLayer),
-           ('dense0', DenseLayer),
-           ('dropout0', DropoutLayer),
-           ('dense1', DenseLayer),
-           ('dense2', DenseLayer),
-           ('dropout1', DropoutLayer),
-           ('dense3', DenseLayer),
-           ('output', DenseLayer)]
-
-params = dict(
-    layers=layers0,
-
-    dropout0_p=0.2,
-    dropout1_p=0.2,
-
-    dense0_num_units=num_features*2,
-    dense1_num_units=num_features*3,
-    dense2_num_units=num_features*10,
-    dense3_num_units=num_features,
-
-    input_shape=(None, num_features),
-    output_num_units=1,
-
-    update=nesterov_momentum,
-    update_learning_rate=0.008,
-
-    eval_size=0.2,
-    verbose=1,
-    max_epochs=100,
-    regression=True
-)
-
-network = NeuralNet(**params)
-# print "run cross val"
-# run_crossval(Xtrain, Ytrain, network)
 print "run split score"
-run_split(Xtrain, Ytrain, network)
-# print "run validation"
-# run_validate(Xtrain, Ytrain, network)
+run_split(Xtrain, Ytrain, pipe)
+print "run validation"
+run_validate(Xtrain, Ytrain, pipe)
