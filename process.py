@@ -141,11 +141,9 @@ def run_validate(Xtrain, Ytrain, model):
 def run_gridsearch(X, Y, model):
     parameters = {
         'ann__update_learning_rate': [0.001, 0.003, 0.01],
-        'ann__update_momentum': [0.8, 0.1, 2],
-        'ann__dropout0_p': [0.1, 0.5, 0.2],
-        'ann__dense0_num_units': [10, 20, 25],
-        'ann__dense1_num_units': [5, 10, 20, 25],
-        # 'ann__regression': [True, False],
+        'ann__dropout0_p': [0.1, 0.2, 0.05],
+        'ann__dense0_num_units': [5, 7, 9, 11, 13],
+        'ann__dense1_num_units': [5, 7, 9, 11, 13]
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
