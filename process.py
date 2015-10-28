@@ -145,7 +145,7 @@ def run_gridsearch(X, Y, model):
         'ann__dropout0_p': [0.1, 0.5, 0.2],
         'ann__dense0_num_units': [10, 20, 25],
         'ann__dense1_num_units': [5, 10, 20, 25],
-        'ann__regression': [True, False],
+        # 'ann__regression': [True, False],
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
