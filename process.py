@@ -149,7 +149,7 @@ def run_gridsearch(X, Y, model):
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
-    grid.fit(X[:,1:], Y)
+    grid.fit(X, Y)
     for p in parameters.keys():
         print 'Gridseach: param %s = %s' % (
             p, str(grid.best_estimator_.get_params()[p]))
