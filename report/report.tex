@@ -18,34 +18,33 @@
 \renewcommand{\familydefault}{\sfdefault}
 
 \title{Machine Learning 2014: Project 1 - Regression Report}
-\author{member1@student.ethz.ch\\ member2@student.ethz.ch\\ member3@student.ethz.ch\\}
+\author{jo@student.ethz.ch\\ sakhadov@student.ethz.ch\\ kevinlu@student.ethz.ch\\}
 \date{\today}
 
 \begin{document}
 \maketitle
 
 \section*{Experimental Protocol}
-Suppose that someone wants to reproduce your results. Briefly describe the steps used to obtain the
-predictions starting from the raw data set downloaded from the project website. Use the following
-sections to explain your methodology. Feel free to add graphs or screenshots if you think it's
-necessary. The report should contain a maximum of 2 pages.
+We used split-training (train on 80\%, test on 20\%) and cross-validation to select the best models. Feature engineering on single columns did not yield good results. Therefore, we used one hot encoding for `Width` and `Branches allowed`. In addition, log-transforming the y values yielded substantially better results.\\
+We plotted single features to gain insight over their distribution and importance (see Section \ref{plots}).
+The machine learning method \textit{random trees} reported several features as as very unimportant: L1 Dcache size, Branches allowed, L1 Icache size, L2 Ucache size.\\
+In the end, we used Random Forest Regression, which yielded the best results and is very fast to train.
 
 \section{Tools}
-Which tools and libraries have you used (e.g. Matlab, Python with scikit-learn, Java with Weka,
-SPSS, language x with library y, $\ldots$). If you have source-code (Matlab scripts, Python scripts, Java source folder, \dots),
-make sure to submit it on the project website together with this report. If you only used
-command-line or GUI-tools describe what you did.
+We used Python with the machine learning library \textit{scikit-learn}.
 
 \section{Algorithm}
-Describe the algorithm you used for regression (e.g. ordinary least squares, ridge regression, $\ldots$)
+\textit{Random forest regression} builds multiple uncorrelated decision trees during training (using randomization). Each tree makes a decision and the class with the most votes in the forest is chosen.
 
 \section{Features}
-Did you construct any new features? What feature transforms did you use?
+We did not construct any new features, as it did not improve the performance.
 
 \section{Parameters}
-How did you find the parameters of your model? (What parameters have you searched over, cross validation procedure, $\ldots$)
+Model validation was performed via cross-validation. We trained on 80\% of the data and tested with 20\%.
 
-\section{Lessons Learned} What other algorithms, tools or methods did you try out that didn't work well?
-Why do you think they performed worse than what you used for your final submission?
+\section{Lessons Learned} In an alternative approach, we tested an \textit{artificial neural network} (ANN). However, it did not perform better than the \textit{random forest regressor}. Neural networks are better suited when the explicit knowledge about the problem is very limited, for instance face recognition.
+
+\section{Plots}\label{plots}
+\includegraphics[height=0.8\textheight]{graph.png}
 
 \end{document}
