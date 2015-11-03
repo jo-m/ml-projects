@@ -6,10 +6,11 @@ import pandas as pd
 
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
+from utils import *
 
 cols = [
     "id",
@@ -90,7 +91,7 @@ def run_gridsearch(X, Y, model):
     return grid.best_estimator_
 
 def build_pipe():
-    scaler = StandardScaler()
+    scaler = MinMaxScaler()
     regressor = RandomForestClassifier(n_estimators=10)
     return Pipeline([
         ('scaler', scaler),
@@ -99,7 +100,7 @@ def build_pipe():
 
 Xtrain, Ytrain = load_data()
 pipe = build_pipe()
-# pipe = run_gridsearch(Xtrain, Ytrain, pipe)
+pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
