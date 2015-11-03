@@ -66,7 +66,7 @@ def write_Y(Y):
     if Y.shape[1] != 2:
         raise 'Y has invalid shape!'
     np.savetxt('results/Ypred.csv', Y,
-               fmt='%d', delimiter=',', header='Id,Delay', comments='')
+               fmt='%d', delimiter=',', header='Id,Label', comments='')
 
 def run_validate(Xtrain, Ytrain, model):
     model.fit(Xtrain[:,1:], Ytrain)
