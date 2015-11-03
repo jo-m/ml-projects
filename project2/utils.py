@@ -1,5 +1,6 @@
 from scipy.stats.stats import pearsonr
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 # compute correlation between feature
@@ -26,16 +27,29 @@ def plotFeatures (X, Y):
 
     MAX_FEATURES = 15
 
-    Y = np.exp(Y)
     permY = np.argsort(Y, axis=0)
-    plt.title("Y")
-    plt.plot(Y[permY])
-    plt.show()
+    # plt.title("Y")
+    # plt.plot(Y[permY])
+    # plt.show()
 
-    for i in range(0, np.min(MAX_FEATURES, X.shape[1])):
+    for i in range(0, X.shape[1]):
         column = X[:, i]
         perm = np.argsort(column, axis=0)
         plt.title("feature " + str(i))
         plt.plot(column[perm], Y[perm], 'bo')
         plt.show()
 
+# plot features and classes
+def plotFeatures3D(X, Y):
+
+    colors = [int(i) for i in Y]
+
+    for i in range(0, X.shape[1]):
+        for j in range(i+1, X.shape[1]):
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(X[:, i], X[:, j], Y, c=colors)
+            ax.set_xlabel('feature {0}'.format(i))
+            ax.set_ylabel('feature {0}'.format(j))
+            ax.set_zlabel('class')
+            plt.show()

@@ -8,6 +8,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.ensemble import RandomForestClassifier
+
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 from utils import *
@@ -80,7 +81,7 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': [100, 150, 200, 250, 500, 1000]
+        'reg__n_estimators': [100, 150, 200, 250]
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -99,6 +100,9 @@ def build_pipe():
     ])
 
 Xtrain, Ytrain = load_data()
+Xtrain = MinMaxScaler().fit_transform(Xtrain[:, 1:])
+plotFeatures3D(Xtrain, Ytrain)
+exit()
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
