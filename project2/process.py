@@ -51,13 +51,21 @@ class ClusterTransform():
     def __init__(self, n_clusters=3, init='k-means++', n_init=10, max_iter=300,
                  tol=1e-4, precompute_distances=True,
                  verbose=0, random_state=None, copy_x=True, n_jobs=-1):
-        self.clusterizer = KMeans(n_clusters=n_clusters)
+        self.n_clusters = n_clusters
+        self.n_jobs = n_jobs
+
+        xTrain = Xtrain[:, 1:]
+        xTrain = DifferentTransforms().transform(xTrain)
+        xTrain = MinMaxScaler().fit_transform(xTrain)
+        cluster_means = compute_means(xTrain, Ytrain)
+        self.clusterizer = KMeans(n_clusters=self.n_clusters, n_jobs=self.n_jobs, init=cluster_means)
 
     # use all x to train K_means
     def fit(self, X, Y):
-
         xTest = np.delete(X_TEST, [5], 1)
         xTest = xTest[:, 1:]
+        xTest = MinMaxScaler().fit_transform(xTest)
+
         Xtotal = np.vstack((X, xTest))
         self.clusterizer.fit(Xtotal)
         return self
@@ -71,6 +79,21 @@ class ClusterTransform():
     def get_params(self, deep=True):
         return self.clusterizer.get_params(deep=True)
 
+class DifferentTransforms ():
+    def __init__(self, n_init=10, max_iter=300,
+                 tol=1e-4, precompute_distances=True,
+                 verbose=0, random_state=None, copy_x=True, n_jobs=-1):
+        pass
+
+    def fit (self, X, Y):
+        return self
+
+    def transform(self, X):
+        return np.delete(X, 4, 1)
+
+
+    def get_params(self, deep=True):
+        return dict()
 
 
 def score(Ytruth, Ypred):
@@ -111,7 +134,6 @@ def run_validate(Xtrain, Ytrain, model):
 
     Xvalidate, _ = load_data(train=False)
 
-    Xvalidate = np.delete(Xvalidate, [5], 1)
     Xvalidate_ids = Xvalidate[:, 0]
     Yvalidate = model.predict(Xvalidate[:, 1:])
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
@@ -120,8 +142,8 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__C': range(2180, 2200, 5),  # the greater C the harder is SVM
-        'reg__gamma': np.arange(0.3, 0.5, 0.01),
+        'reg__C': range(1100, 1110, 1),  # the greater C the harder is SVM
+        'reg__gamma': np.arange(0.165, 0.175, 0.002),
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -134,20 +156,23 @@ def run_gridsearch(X, Y, model):
 
 
 def build_pipe():
+    trans = DifferentTransforms()
     scaler = MinMaxScaler()
     cluster = ClusterTransform()
-    regressor = SVC()
+    regressor = SVC(C=1102, gamma = 0.173)
     return Pipeline([
+        ('trans', trans),
         ('scaler', scaler),
         ('cls', cluster),
         ('reg', regressor),
     ])
 
 
+
 Xtrain, Ytrain = load_data()
 
 # also could delete 3 and 6, minimal score drop, try on the final model
-Xtrain = np.delete(Xtrain, [5], 1)
+# Xtrain = np.delete(Xtrain, [5], 1)
 
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
