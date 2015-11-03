@@ -7,9 +7,25 @@ import pandas as pd
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.mixture import GMM
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import RidgeClassifier
+
+from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
+
+# SGDClassifier(loss=”perceptron”, eta0=1, learning_rate=”constant”, penalty=None).
+
+from sklearn.linear_model import SGDClassifier
 
 cols = [
     "id",
@@ -79,7 +95,17 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': [100, 150, 200, 250, 500, 1000]
+        'reg__n_estimators': [10, 20, 50, 100, 150],
+        # 'reg__n_neighbors': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50],
+        # 'reg__penalty': ['l1', 'l2'],
+        # 'reg__alpha': [0.0001, 0.0002, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1],
+        # 'reg__epsilon': [0.01, 0.02, 0.05, 0.1, 0.2, 0.5],
+        # 'reg__C': [0.5, .6, .7, .8, 1, 1.5, 2, 2.5, 3],
+        # 'reg__kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
+        # 'reg__multi_class': ['ovr', 'multinomial']
+        # 'reg__loss' : ['deviance', 'exponential'],
+        'reg__learning_rate': [0.01, 0.02, 0.05, 0.1, 0.2, 0.5],
+        'reg__max_depth' : [2, 3, 4, 5],
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -91,7 +117,7 @@ def run_gridsearch(X, Y, model):
 
 def build_pipe():
     scaler = StandardScaler()
-    regressor = RandomForestClassifier(n_estimators=10)
+    regressor = GradientBoostingClassifier(max_depth=2, n_estimators=150, learning_rate=0.05)
     return Pipeline([
         ('scaler', scaler),
         ('reg', regressor),
