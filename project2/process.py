@@ -47,7 +47,7 @@ def score(Ytruth, Ypred):
     if Ypred.ndim != 1:
         raise Exception('Ypred has invalid shape!')
 
-    sum = (Ytruth != Ypred).astype(float).sum().sum()
+    sum = (Ytruth == Ypred).astype(float).sum().sum()
     return sum / np.product(Ytruth.shape)
 
 def run_crossval(X, Y, model):
