@@ -7,7 +7,8 @@ import pandas as pd
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.ensemble import RandomForestClassifier
+# from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
@@ -74,6 +75,8 @@ def run_validate(Xtrain, Ytrain, model):
     model.fit(Xtrain[:,1:], Ytrain)
 
     Xvalidate, _ = load_data(train=False)
+
+    Xvalidate = np.delete(Xvalidate, [5], 1)
     Xvalidate_ids = Xvalidate[:,0]
     Yvalidate = model.predict(Xvalidate[:,1:])
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
@@ -81,7 +84,8 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': [100, 150, 200, 250]
+        'reg__C': range(2180, 2200, 1),  # the greater C the harder is SVM
+        'reg__gamma': np.arange(0.3, 0.5, 0.01),
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -93,16 +97,17 @@ def run_gridsearch(X, Y, model):
 
 def build_pipe():
     scaler = MinMaxScaler()
-    regressor = RandomForestClassifier(n_estimators=10)
+    regressor = SVC()
     return Pipeline([
         ('scaler', scaler),
         ('reg', regressor),
     ])
 
 Xtrain, Ytrain = load_data()
-Xtrain = MinMaxScaler().fit_transform(Xtrain[:, 1:])
-plotFeatures3D(Xtrain, Ytrain)
-exit()
+
+# also could delete 3 and 6, minimal score drop, try on the final model
+Xtrain = np.delete(Xtrain, [5], 1)
+
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
