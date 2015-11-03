@@ -73,7 +73,7 @@ def run_validate(Xtrain, Ytrain, model):
 
     Xvalidate, _ = load_data(train=False)
     Xvalidate_ids = Xvalidate[:,0]
-    Yvalidate = np.exp(model.predict(Xvalidate[:,1:]))
+    Yvalidate = model.predict(Xvalidate[:,1:])
     ret = np.vstack((Xvalidate_ids, Yvalidate)).T
     write_Y(ret)
 
