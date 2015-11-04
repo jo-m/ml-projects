@@ -53,20 +53,3 @@ def plotFeatures3D(X, Y):
             ax.set_ylabel('feature {0}'.format(j))
             ax.set_zlabel('class')
             plt.show()
-
-
-def compute_means(X, Y, num_classes=3):
-    n_features = X.shape[1]
-    n_samples = X.shape[0]
-    classes = np.zeros((num_classes, n_features))
-    n_c = np.zeros(3)
-    for i in range(0, n_samples):
-        label = Y[i]
-        n_c[label] += 1
-        for j in range(0, n_features):
-            classes[label][j] += X[i][j]
-
-    for i in range(0, num_classes):
-        for j in range(0, n_features):
-            classes[i][j] /= n_c[i]
-    return classes

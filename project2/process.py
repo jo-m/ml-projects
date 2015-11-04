@@ -7,9 +7,12 @@ import pandas as pd
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 # from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.cluster import KMeans
+from sklearn.mixture import GMM
+
 
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
@@ -43,57 +46,75 @@ def load_data(train=True):
 
     return data.as_matrix().astype(float), Y
 
-# avoid reloading data for every call to fit
-X_TEST, _ = load_data(False)
 
 # use clustering on all unsupervised data to produce one more feature
 class ClusterTransform():
-    def __init__(self, n_clusters=3, init='k-means++', n_init=10, max_iter=300,
-                 tol=1e-4, precompute_distances=True,
-                 verbose=0, random_state=None, copy_x=True, n_jobs=-1):
+    def __init__(self, n_clusters=3, n_jobs=-1, thresh=1e-3, min_covar=1e-3, covariance_type='tied',
+                 **kwaargs):
         self.n_clusters = n_clusters
         self.n_jobs = n_jobs
+        self.X_TEST, _ = load_data(False)
 
         xTrain = Xtrain[:, 1:]
         xTrain = DifferentTransforms().transform(xTrain)
-        xTrain = MinMaxScaler().fit_transform(xTrain)
-        cluster_means = compute_means(xTrain, Ytrain)
-        self.clusterizer = KMeans(n_clusters=self.n_clusters, n_jobs=self.n_jobs, init=cluster_means)
+        xTrain = Scaler.fit_transform(xTrain)
+        cluster_means = np.array([xTrain[Ytrain == i].mean(axis=0)
+                                  for i in xrange(n_clusters)])
 
-    # use all x to train K_means
-    def fit(self, X, Y):
-        xTest = np.delete(X_TEST, [5], 1)
+        self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
+                               # allowing to adjust means helps to avoid overfitting
+                               covariance_type=covariance_type, min_covar=min_covar, thresh=thresh)
+        self.clusterizer.means_ = cluster_means
+
+    def set_params(self, **params):
+        self.clusterizer.set_params(**params)
+
+    # use all x to train cluster
+    def fit(self, X, _):
+        xTest = DifferentTransforms().transform(self.X_TEST)
         xTest = xTest[:, 1:]
-        xTest = MinMaxScaler().fit_transform(xTest)
+        xTest = Scaler.fit_transform(xTest)
 
         Xtotal = np.vstack((X, xTest))
         self.clusterizer.fit(Xtotal)
         return self
 
     # add the predicted cluster labels as a feature vector
-    def transform (self, X):
+    def transform(self, X):
         xFeat = self.clusterizer.predict(X)
         xRes = np.hstack((X, np.atleast_2d(xFeat).T))
         return xRes
 
+    def predict(self, X):
+        return self.clusterizer.predict(X)
+
+    # not sure why this is needed
+    def score(self, X, Y):
+        return score(self.predict(X), Y)
+
     def get_params(self, deep=True):
-        return self.clusterizer.get_params(deep=True)
+        return self.clusterizer.get_params(deep=deep)
 
-class DifferentTransforms ():
-    def __init__(self, n_init=10, max_iter=300,
-                 tol=1e-4, precompute_distances=True,
-                 verbose=0, random_state=None, copy_x=True, n_jobs=-1):
-        pass
 
-    def fit (self, X, Y):
+class DifferentTransforms():
+    def __init__(self, featureDel = 4, **kwargs):
+        self.featureDel = featureDel
+
+    def fit(self, X, Y):
         return self
 
     def transform(self, X):
-        return np.delete(X, 4, 1)
+        # delete useless frequency
+        return np.delete(X, self.featureDel, 1)
 
+    def get_params(self, **kwargs):
+        return dict({'featureDel': self.featureDel})
 
-    def get_params(self, deep=True):
-        return dict()
+    def set_params(self, **params):
+        for key in params:
+            if key == 'featureDel':
+                self.featureDel = params[key]
+                break
 
 
 def score(Ytruth, Ypred):
@@ -142,8 +163,10 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__C': range(1100, 1110, 1),  # the greater C the harder is SVM
-        'reg__gamma': np.arange(0.165, 0.175, 0.002),
+        # 'reg__C': range(1000, 1050, 10),  # the greater C the harder is SVM
+        # 'reg__gamma': np.arange(0.170, 0.172, 0.001),
+        # 'cls__covariance_type': ['tied'],
+        # 'trans__featureDel': range(-1, 7)
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -157,9 +180,9 @@ def run_gridsearch(X, Y, model):
 
 def build_pipe():
     trans = DifferentTransforms()
-    scaler = MinMaxScaler()
+    scaler = Scaler
     cluster = ClusterTransform()
-    regressor = SVC(C=1102, gamma = 0.173)
+    regressor = SVC(C=1010, gamma=0.171)
     return Pipeline([
         ('trans', trans),
         ('scaler', scaler),
@@ -168,14 +191,11 @@ def build_pipe():
     ])
 
 
-
 Xtrain, Ytrain = load_data()
 
-# also could delete 3 and 6, minimal score drop, try on the final model
-# Xtrain = np.delete(Xtrain, [5], 1)
-
+Scaler = MinMaxScaler()  # minmax is better for svm and Kmeans but worse for GMM
 pipe = build_pipe()
-pipe = run_gridsearch(Xtrain, Ytrain, pipe)
+# pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
