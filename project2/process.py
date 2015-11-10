@@ -6,12 +6,14 @@ import pandas as pd
 
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler
+# from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
-# from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.cluster import KMeans
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+# from sklearn.svm import SVC
+# from sklearn.cluster import KMeans
 from sklearn.mixture import GMM
+from sklearn.covariance import EllipticEnvelope
 
 
 import sklearn.cross_validation as skcv
@@ -80,9 +82,12 @@ class ClusterTransform():
         return self
 
     # add the predicted cluster labels as a feature vector
+    # binarize the labels
     def transform(self, X):
         xFeat = self.clusterizer.predict(X)
-        xRes = np.hstack((X, np.atleast_2d(xFeat).T))
+        xFeat = np.atleast_2d(xFeat).T
+        xFeat = OneHotEncoder(sparse=False).fit_transform(xFeat)
+        xRes = np.hstack((X, xFeat))
         return xRes
 
     def predict(self, X):
@@ -115,6 +120,25 @@ class DifferentTransforms():
             if key == 'featureDel':
                 self.featureDel = params[key]
                 break
+
+# delete outliers, boundaries were defined visually
+def delOutliers(Xtrain, Ytrain):
+    outliers = []
+    bounds = [100, 4.5, 4, 3.8, 5, 6, 5, 7]
+    xTrain = Scaler.fit_transform(Xtrain)
+    for row in range(0, xTrain.shape[0]):
+        for col in range(1, xTrain.shape[1]):  # zeros column ids
+            if xTrain[row, col] > bounds[col]:
+                outliers.append(row)
+                break
+
+    print Ytrain.shape
+    print outliers
+    Xtrain = np.delete(Xtrain, outliers, 0)
+    Ytrain = np.delete(Ytrain, outliers, 0)
+
+    print Ytrain.shape
+    return Xtrain, Ytrain
 
 
 def score(Ytruth, Ypred):
@@ -163,10 +187,8 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        # 'reg__C': range(1000, 1050, 10),  # the greater C the harder is SVM
-        # 'reg__gamma': np.arange(0.170, 0.172, 0.001),
-        # 'cls__covariance_type': ['tied'],
-        # 'trans__featureDel': range(-1, 7)
+        'reg__n_estimators': range(50, 1000, 200),  # the greater C the harder is SVM
+
     }
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
@@ -182,10 +204,10 @@ def build_pipe():
     trans = DifferentTransforms()
     scaler = Scaler
     cluster = ClusterTransform()
-    regressor = SVC(C=1010, gamma=0.171)
+    regressor = RandomForestClassifier()
     return Pipeline([
-        ('trans', trans),
         ('scaler', scaler),
+        ('trans', trans),
         ('cls', cluster),
         ('reg', regressor),
     ])
@@ -193,9 +215,13 @@ def build_pipe():
 
 Xtrain, Ytrain = load_data()
 
-Scaler = MinMaxScaler()  # minmax is better for svm and Kmeans but worse for GMM
+Scaler = StandardScaler()  # minmax is better for svm and Kmeans but worse for GMM
+
+# delete outliers from the train set
+Xtrain, Ytrain = delOutliers(Xtrain, Ytrain)
+
 pipe = build_pipe()
-# pipe = run_gridsearch(Xtrain, Ytrain, pipe)
+pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
