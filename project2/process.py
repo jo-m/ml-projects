@@ -9,12 +9,12 @@ from sklearn.pipeline import Pipeline
 # from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.ensemble import RandomForestClassifier
+
+# from sklearn.ensemble import RandomForestClassifier
 # from sklearn.svm import SVC
 # from sklearn.cluster import KMeans
 from sklearn.mixture import GMM
-from sklearn.covariance import EllipticEnvelope
-
+import xgboost as xgb
 
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
@@ -132,12 +132,9 @@ def delOutliers(Xtrain, Ytrain):
                 outliers.append(row)
                 break
 
-    print Ytrain.shape
-    print outliers
     Xtrain = np.delete(Xtrain, outliers, 0)
     Ytrain = np.delete(Ytrain, outliers, 0)
 
-    print Ytrain.shape
     return Xtrain, Ytrain
 
 
@@ -187,7 +184,10 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': range(50, 1000, 200),  # the greater C the harder is SVM
+        'reg__n_estimators': [100, 500, 1000, 2000, 4000],
+        'reg__learning_rate': [0.005, 0.05, 0.1],
+        'reg__max_depth': [3, 5, 10],
+        'reg__subsample': [0.5, 1]
 
     }
 
@@ -204,7 +204,7 @@ def build_pipe():
     trans = DifferentTransforms()
     scaler = Scaler
     cluster = ClusterTransform()
-    regressor = RandomForestClassifier()
+    regressor = xgb.XGBClassifier()
     return Pipeline([
         ('scaler', scaler),
         ('trans', trans),
