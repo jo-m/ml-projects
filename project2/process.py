@@ -51,7 +51,7 @@ def load_data(train=True):
 
 # use clustering on all unsupervised data to produce one more feature
 class ClusterTransform():
-    def __init__(self, n_clusters=3, n_jobs=-1, thresh=1e-3, min_covar=1e-3, covariance_type='tied',
+    def __init__(self, n_clusters=3, n_jobs=-1, tol=1e-3, min_covar=1e-3, covariance_type='tied',
                  **kwaargs):
         self.n_clusters = n_clusters
         self.n_jobs = n_jobs
@@ -65,7 +65,7 @@ class ClusterTransform():
 
         self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
                                # allowing to adjust means helps to avoid overfitting
-                               covariance_type=covariance_type, min_covar=min_covar, thresh=thresh)
+                               covariance_type=covariance_type, min_covar=min_covar, tol=tol)
         self.clusterizer.means_ = cluster_means
 
     def set_params(self, **params):
