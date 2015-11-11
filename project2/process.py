@@ -184,14 +184,14 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': [100, 500, 1000, 2000, 4000],
-        'reg__learning_rate': [0.005, 0.05, 0.1],
-        'reg__max_depth': [3, 5, 10],
-        'reg__subsample': [0.5, 1]
+        # 'reg__n_estimators': [400, 500, 1000],
+        # 'reg__learning_rate': [0.05, 0.1, 0.15],
+        # 'reg__max_depth': [5, 10, 12],
+        # 'reg__subsample': [0.3, 0.5, 0.9]
 
     }
 
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1)
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=1)
     grid.fit(X[:, 1:], Y)
 
     for p in parameters.keys():
@@ -204,7 +204,7 @@ def build_pipe():
     trans = DifferentTransforms()
     scaler = Scaler
     cluster = ClusterTransform()
-    regressor = xgb.XGBClassifier()
+    regressor = xgb.XGBClassifier(n_estimators=3000, learning_rate=0.01, max_depth=8, subsample=0.6)
     return Pipeline([
         ('scaler', scaler),
         ('trans', trans),
