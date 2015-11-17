@@ -66,11 +66,7 @@ class ClusterTransform():
         cluster_means = np.array([xTrain[Ytrain == i].mean(axis=0)
                                   for i in xrange(n_clusters)])
 
-        # self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
-        # # allowing to adjust means helps to avoid overfitting
-        #                        covariance_type=covariance_type, min_covar=min_covar, thresh=tol)
         self.clusterizer = KMeans(n_clusters=n_clusters, init=cluster_means, n_jobs=n_jobs)
-        # self.clusterizer.means_ = cluster_means
 
     def set_params(self, **params):
         self.clusterizer.set_params(**params)
@@ -251,7 +247,6 @@ def build_pipe():
     trees = StackInstance(**{'classifier': RandomForestClassifier(n_estimators=700)})
 
     regressor = xgb.XGBClassifier(n_estimators=3000, learning_rate=0.01, subsample=0.6)
-    # regressor = xgb.XGBClassifier()
 
     return Pipeline([
         ('scaler', scaler),
