@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-import numpy as np
 import pandas as pd
 
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.cluster import KMeans
 
@@ -15,7 +12,6 @@ from datetime import datetime
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
-from sklearn.mixture import GMM
 import xgboost as xgb
 
 import sklearn.cross_validation as skcv
@@ -222,10 +218,11 @@ def run_gridsearch(X, Y, model):
         'reg__n_estimators': [1000, 2000, 4000, 5000],
         'reg__learning_rate': [0.005, 0.01, 0.05, 0.1, 0.15],
         'reg__max_depth': [3, 4, 5, 6],
-        'reg__sub_sample': [0.5, 0.6, 0.7, 0.8, 1]
+        'reg__subsample': [0.5, 0.6, 0.7, 0.8, 1]
     }
 
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1, cv=5)
+
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1, cv=3)
     grid.fit(X[:, 1:], Y)
 
     for p in parameters.keys():
@@ -237,8 +234,6 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     trans = DifferentTransforms()
     scaler = Scaler
-
-    # add GMM to the stack
     cluster = ClusterTransform()
 
     # add svm and Random trees
@@ -247,6 +242,7 @@ def build_pipe():
     trees = StackInstance(**{'classifier': RandomForestClassifier(n_estimators=700)})
 
     regressor = xgb.XGBClassifier(n_estimators=3000, learning_rate=0.01, subsample=0.6)
+
 
     return Pipeline([
         ('scaler', scaler),
