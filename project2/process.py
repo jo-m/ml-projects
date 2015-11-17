@@ -10,9 +10,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.svm import SVC
-# from sklearn.cluster import KMeans
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.mixture import GMM
 import xgboost as xgb
 
@@ -49,6 +48,7 @@ def load_data(train=True):
     return data.as_matrix().astype(float), Y
 
 
+# unsupervised classifier
 # use clustering on all unsupervised data to produce one more feature
 class ClusterTransform():
     def __init__(self, n_clusters=3, n_jobs=-1, tol=1e-3, min_covar=1e-3, covariance_type='tied',
@@ -65,7 +65,7 @@ class ClusterTransform():
 
         self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
                                # allowing to adjust means helps to avoid overfitting
-                               covariance_type=covariance_type, min_covar=min_covar, tol=tol)
+                               covariance_type=covariance_type, min_covar=min_covar, thresh=tol)
         self.clusterizer.means_ = cluster_means
 
     def set_params(self, **params):
@@ -101,8 +101,42 @@ class ClusterTransform():
         return self.clusterizer.get_params(deep=deep)
 
 
+# supervised classifier
+class StackInstance():
+    def __init__(self, **kwargs):
+        self.classifier = kwargs.get('classifier')
+
+    def set_params(self, **params):
+        params.pop('classifier', None)
+        self.classifier.set_params(**params)
+
+    def fit(self, X, Y):
+        self.classifier.fit(X, Y)
+        return self
+
+    # add the predicted labels as a feature vector
+    # binarize the labels
+    def transform(self, X):
+        xFeat = self.classifier.predict(X)
+        xFeat = np.atleast_2d(xFeat).T
+        xFeat = OneHotEncoder(sparse=False).fit_transform(xFeat)
+        xRes = np.hstack((X, xFeat))
+        return xRes
+
+    def predict(self, X):
+        return self.classifier.predict(X)
+
+    def score(self, X, Y):
+        return score(self.predict(X), Y)
+
+    def get_params(self, deep=True):
+        dic = self.classifier.get_params(deep=deep)
+        dic['classifier'] = self.classifier
+        return dic
+
+
 class DifferentTransforms():
-    def __init__(self, featureDel = 4, **kwargs):
+    def __init__(self, featureDel=4, **kwargs):
         self.featureDel = featureDel
 
     def fit(self, X, Y):
@@ -120,6 +154,7 @@ class DifferentTransforms():
             if key == 'featureDel':
                 self.featureDel = params[key]
                 break
+
 
 # delete outliers, boundaries were defined visually
 def delOutliers(Xtrain, Ytrain):
@@ -152,7 +187,7 @@ def score(Ytruth, Ypred):
 
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=4)
+    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=3, n_jobs=-1)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
 
@@ -184,14 +219,14 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        # 'reg__n_estimators': [400, 500, 1000],
-        # 'reg__learning_rate': [0.05, 0.1, 0.15],
-        # 'reg__max_depth': [5, 10, 12],
+        'reg__n_estimators': [700, 1000, 2000, 3000, 4000],
+        'reg__learning_rate': [0.05, 0.1, 0.15],
+        # 'reg__max_depth': [2, 3, 7],
         # 'reg__subsample': [0.3, 0.5, 0.9]
 
     }
 
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=1)
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1, cv=3)
     grid.fit(X[:, 1:], Y)
 
     for p in parameters.keys():
@@ -203,12 +238,25 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     trans = DifferentTransforms()
     scaler = Scaler
+
+    # add GMM to the stack
     cluster = ClusterTransform()
-    regressor = xgb.XGBClassifier(n_estimators=3000, learning_rate=0.01, max_depth=8, subsample=0.6)
+
+    # add svm and Random trees
+    # every next classifier uses the result of the previous one
+    # svm = StackInstance(**{'classifier': SVC(C=1102, gamma=0.173)})
+    svm = StackInstance(**{'classifier': SVC()})
+    # trees = StackInstance(**{'classifier': RandomForestClassifier(n_estimators=500)})
+    trees = StackInstance(**{'classifier': RandomForestClassifier()})
+
+    # regressor = xgb.XGBClassifier(n_estimators=3000, learning_rate=0.01, subsample=0.6)
+    regressor = xgb.XGBClassifier()
     return Pipeline([
         ('scaler', scaler),
         ('trans', trans),
         ('cls', cluster),
+        ('svm', svm),
+        ('trees', trees),
         ('reg', regressor),
     ])
 
