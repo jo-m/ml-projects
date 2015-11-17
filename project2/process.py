@@ -6,13 +6,15 @@ import pandas as pd
 
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
-# from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.cluster import KMeans
 
-# from sklearn.ensemble import RandomForestClassifier
-# from sklearn.svm import SVC
-# from sklearn.cluster import KMeans
+from datetime import datetime
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from sklearn.mixture import GMM
 import xgboost as xgb
 
@@ -49,6 +51,7 @@ def load_data(train=True):
     return data.as_matrix().astype(float), Y
 
 
+# unsupervised classifier
 # use clustering on all unsupervised data to produce one more feature
 class ClusterTransform():
     def __init__(self, n_clusters=3, n_jobs=-1, tol=1e-3, min_covar=1e-3, covariance_type='tied',
@@ -63,10 +66,11 @@ class ClusterTransform():
         cluster_means = np.array([xTrain[Ytrain == i].mean(axis=0)
                                   for i in xrange(n_clusters)])
 
-        self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
-                               # allowing to adjust means helps to avoid overfitting
-                               covariance_type=covariance_type, min_covar=min_covar, tol=tol)
-        self.clusterizer.means_ = cluster_means
+        # self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
+        # # allowing to adjust means helps to avoid overfitting
+        #                        covariance_type=covariance_type, min_covar=min_covar, thresh=tol)
+        self.clusterizer = KMeans(n_clusters=n_clusters, init=cluster_means, n_jobs=n_jobs)
+        # self.clusterizer.means_ = cluster_means
 
     def set_params(self, **params):
         self.clusterizer.set_params(**params)
@@ -101,8 +105,42 @@ class ClusterTransform():
         return self.clusterizer.get_params(deep=deep)
 
 
+# supervised classifier
+class StackInstance():
+    def __init__(self, **kwargs):
+        self.classifier = kwargs.get('classifier')
+
+    def set_params(self, **params):
+        params.pop('classifier', None)
+        self.classifier.set_params(**params)
+
+    def fit(self, X, Y):
+        self.classifier.fit(X, Y)
+        return self
+
+    # add the predicted labels as a feature vector
+    # binarize the labels
+    def transform(self, X):
+        xFeat = self.classifier.predict(X)
+        xFeat = np.atleast_2d(xFeat).T
+        xFeat = OneHotEncoder(sparse=False).fit_transform(xFeat)
+        xRes = np.hstack((X, xFeat))
+        return xRes
+
+    def predict(self, X):
+        return self.classifier.predict(X)
+
+    def score(self, X, Y):
+        return score(self.predict(X), Y)
+
+    def get_params(self, deep=True):
+        dic = self.classifier.get_params(deep=deep)
+        dic['classifier'] = self.classifier
+        return dic
+
+
 class DifferentTransforms():
-    def __init__(self, featureDel = 4, **kwargs):
+    def __init__(self, featureDel=4, **kwargs):
         self.featureDel = featureDel
 
     def fit(self, X, Y):
@@ -120,6 +158,7 @@ class DifferentTransforms():
             if key == 'featureDel':
                 self.featureDel = params[key]
                 break
+
 
 # delete outliers, boundaries were defined visually
 def delOutliers(Xtrain, Ytrain):
@@ -152,7 +191,7 @@ def score(Ytruth, Ypred):
 
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=4)
+    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=3, n_jobs=-1)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
 
@@ -167,7 +206,7 @@ def run_split(X, Y, model):
 def write_Y(Y):
     if Y.shape[1] != 2:
         raise 'Y has invalid shape!'
-    np.savetxt('results/Ypred.csv', Y,
+    np.savetxt('results/Ypred{0}.csv'.format(datetime.now().strftime('%Y-%m-%d,%H:%M:%S')), Y,
                fmt='%d', delimiter=',', header='Id,Label', comments='')
 
 
@@ -184,14 +223,13 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        # 'reg__n_estimators': [400, 500, 1000],
-        # 'reg__learning_rate': [0.05, 0.1, 0.15],
-        # 'reg__max_depth': [5, 10, 12],
-        # 'reg__subsample': [0.3, 0.5, 0.9]
-
+        'reg__n_estimators': [1000, 2000, 4000, 5000],
+        'reg__learning_rate': [0.005, 0.01, 0.05, 0.1, 0.15],
+        'reg__max_depth': [3, 4, 5, 6],
+        'reg__sub_sample': [0.5, 0.6, 0.7, 0.8, 1]
     }
 
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=1)
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1, cv=5)
     grid.fit(X[:, 1:], Y)
 
     for p in parameters.keys():
@@ -203,25 +241,37 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     trans = DifferentTransforms()
     scaler = Scaler
+
+    # add GMM to the stack
     cluster = ClusterTransform()
-    regressor = xgb.XGBClassifier(n_estimators=3000, learning_rate=0.01, max_depth=8, subsample=0.6)
+
+    # add svm and Random trees
+    # every next classifier uses the result of the previous one
+    svm = StackInstance(**{'classifier': SVC(C=1102, gamma=0.173)})
+    trees = StackInstance(**{'classifier': RandomForestClassifier(n_estimators=700)})
+
+    regressor = xgb.XGBClassifier(n_estimators=3000, learning_rate=0.01, subsample=0.6)
+    # regressor = xgb.XGBClassifier()
+
     return Pipeline([
         ('scaler', scaler),
         ('trans', trans),
         ('cls', cluster),
+        ('svm', svm),
+        ('trees', trees),
         ('reg', regressor),
     ])
 
 
 Xtrain, Ytrain = load_data()
 
-Scaler = StandardScaler()  # minmax is better for svm and Kmeans but worse for GMM
+Scaler = MinMaxScaler()  # minmax is better for svm and Kmeans but worse for GMM
 
 # delete outliers from the train set
 Xtrain, Ytrain = delOutliers(Xtrain, Ytrain)
 
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
+run_validate(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
-run_validate(Xtrain, Ytrain, pipe)
