@@ -2,6 +2,7 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[pdftex]{hyperref}
+\usepackage{subcaption}
 
 % Lengths and indenting
 \setlength{\textwidth}{16.5cm}
@@ -17,7 +18,7 @@
 
 \renewcommand{\familydefault}{\sfdefault}
 
-\title{Machine Learning 2014: Project 1 - Regression Report}
+\title{Machine Learning 2015: Project 1 - Regression Report}
 \author{jo@student.ethz.ch\\ sakhadov@student.ethz.ch\\ kevinlu@student.ethz.ch\\}
 \date{\today}
 
@@ -25,27 +26,41 @@
 \maketitle
 
 \section*{Experimental Protocol}
-Suppose that someone wants to reproduce your results. Briefly describe the steps used to obtain the
-predictions starting from the raw data set downloaded from the project website. Use the following
-sections to explain your methodology. Feel free to add graphs or screenshots if you think it's
-necessary. The report should contain a maximum of 2 pages.
+We used split-training (train on 80\%, test on 20\%) and ten fold cross-validation to select the best models. \\
+To better understand the data and feature importance, we used two different plotting methods. Firstly, we plotted every combination of two features and the class on the third axis. With this we could see that there are some outliers in the data, and we could set the thresholds for the outliers visually. From figure \ref{2Features} we can see that we can set the threshold to 4 on the frequency 1, because the points beyond this limit are clearly to far away from the centers.\\ 
+Furthermore, we plotted all combinations of three features on a 3D graph. With this technique we could examine the importance of each feature. Figure \ref{3Features} shows that the frequency 5 has probably no impact on the labels, because the means of different classes lay roughly on the same height.
+
+
+\begin{figure}[!b!]
+ \centering 
+\begin{subfigure}[b]{0.4\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{2_features.png} 
+	\caption{}
+	\label{2Features}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.4\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{3_features.png} 
+	\caption{}
+	\label{3Features}
+\end{subfigure}
+\caption{We used different visualization strategies to better understand the data. On the left two different features are plotted on the horizontal axis and the labels on the vertical axis. On the right three different features are plotted on three axis and the data points have the color of its class.}
+\end{figure}
 
 \section{Tools}
-Which tools and libraries have you used (e.g. Matlab, Python with scikit-learn, Java with Weka,
-SPSS, language x with library y, $\ldots$). If you have source-code (Matlab scripts, Python scripts, Java source folder, \dots),
-make sure to submit it on the project website together with this report. If you only used
-command-line or GUI-tools describe what you did.
+We used Python 2 with the machine learning library \textit{scikit-learn} and \textit{numpy}. Also, for the \textit{artificial neural network} approach we used a Python library called \textit{Lasagne}.
 
 \section{Algorithm}
-Describe the algorithm you used for regression (e.g. ordinary least squares, ridge regression, $\ldots$)
+\textit{Random forest regression} builds multiple decision trees during training (using randomization). Each tree makes a prediction and the average value is taken as the final result.
 
 \section{Features}
-Did you construct any new features? What feature transforms did you use?
+We did not construct any new features, as it did not improve the performance in the settings we chose.
 
 \section{Parameters}
-How did you find the parameters of your model? (What parameters have you searched over, cross validation procedure, $\ldots$)
+Parameters were found using grid search. For every possible set of parameters 3-fold cross-validation was performed to find the best generalizing parameters. To validate the model afterwards, a 10-fold cross-validation was applied together with a split-test, where we trained on 80\% of the data and tested on the other 20\%.
 
-\section{Lessons Learned} What other algorithms, tools or methods did you try out that didn't work well?
-Why do you think they performed worse than what you used for your final submission?
+\section{Lessons Learned} In an alternative approach, we tested an \textit{artificial neural network} (ANN). However, it did not perform better than the \textit{random forest regressor}. Neural networks may be better suited for a case where the number of features is large and the explicit knowledge about separate features is very limited, for instance face recognition.
 
 \end{document}

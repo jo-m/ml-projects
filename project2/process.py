@@ -5,8 +5,10 @@ import pandas as pd
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.cluster import KMeans
+from sklearn.mixture import GMM
 
 from datetime import datetime
 
@@ -62,15 +64,19 @@ class ClusterTransform():
         cluster_means = np.array([xTrain[Ytrain == i].mean(axis=0)
                                   for i in xrange(n_clusters)])
 
-        self.clusterizer = KMeans(n_clusters=n_clusters, init=cluster_means, n_jobs=n_jobs)
+        self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
+                   # allowing to adjust means helps to avoid overfitting
+                   covariance_type=covariance_type, min_covar=min_covar, thresh=thresh)
+        self.clusterizer.means_ = cluster_means
 
     def set_params(self, **params):
         self.clusterizer.set_params(**params)
 
     # use all x to train cluster
     def fit(self, X, _):
-        xTest = DifferentTransforms().transform(self.X_TEST)
+        xTest = self.X_TEST
         xTest = xTest[:, 1:]
+        xTest = DifferentTransforms().transform(xTest)
         xTest = Scaler.fit_transform(xTest)
 
         Xtotal = np.vstack((X, xTest))
@@ -216,8 +222,8 @@ def run_validate(Xtrain, Ytrain, model):
 def run_gridsearch(X, Y, model):
     parameters = {
         'reg__n_estimators': [1000, 2000, 4000, 5000],
-        'reg__learning_rate': [0.005, 0.01, 0.05, 0.1, 0.15],
-        'reg__max_depth': [3, 4, 5, 6],
+        'reg__learning_rate': [0.005, 0.008, 0.01, 0.015],
+        'reg__max_depth': [2, 3, 4],
         'reg__subsample': [0.5, 0.6, 0.7, 0.8, 1]
     }
 
@@ -256,8 +262,11 @@ def build_pipe():
 
 Xtrain, Ytrain = load_data()
 
-Scaler = MinMaxScaler()  # minmax is better for svm and Kmeans but worse for GMM
+Scaler = StandardScaler()  # minmax is better for svm and Kmeans but worse for GMM
+Xtrain = Scaler.fit_transform(Xtrain)
+plotFeatures3D(Xtrain[:, 1:], Ytrain)
 
+exit()
 # delete outliers from the train set
 Xtrain, Ytrain = delOutliers(Xtrain, Ytrain)
 

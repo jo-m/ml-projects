@@ -40,7 +40,7 @@ def plotFeatures(X, Y):
         plt.show()
 
 
-# plot features and classes
+# plot 2 features and classes
 def plotFeatures3D(X, Y):
     colors = [int(i) for i in Y]
 
@@ -49,7 +49,23 @@ def plotFeatures3D(X, Y):
             fig = plt.figure()
             ax = fig.add_subplot(111, projection='3d')
             ax.scatter(X[:, i], X[:, j], Y, c=colors)
-            ax.set_xlabel('feature {0}'.format(i))
-            ax.set_ylabel('feature {0}'.format(j))
+            ax.set_xlabel('fr {0}'.format(i+1))
+            ax.set_ylabel('fr {0}'.format(j+1))
             ax.set_zlabel('class')
             plt.show()
+
+
+# plot 3 features and classes
+def plot3Features(X, Y):
+    colors = [int(i) for i in Y]
+
+    for i in range(0, X.shape[1]):
+        for j in range(i + 1, X.shape[1]):
+            for z in range(j + 1, X.shape[1]):
+                fig = plt.figure()
+                ax = fig.add_subplot(111, projection='3d')
+                ax.scatter(X[:, i], X[:, j], X[:, z], c=colors)
+                ax.set_xlabel('fr {0}'.format(i + 1))
+                ax.set_ylabel('fr {0}'.format(j+1))
+                ax.set_zlabel('fr {0}'.format(z +1))
+                plt.show()
