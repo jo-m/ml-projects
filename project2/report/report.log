@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/Debian) (format=pdflatex 2015.3.9)  18 NOV 2015 09:55
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/Debian) (format=pdflatex 2015.3.9)  18 NOV 2015 14:03
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -320,47 +320,46 @@ Package caption Info: End \AtBeginDocument code.
 File: 2_features.png Graphic file (type png)
 
 <use 2_features.png>
-Package pdftex.def Info: 2_features.png used on input line 38.
+Package pdftex.def Info: 2_features.png used on input line 41.
 (pdftex.def)             Requested size: 187.78531pt x 131.82819pt.
  <3_features.png, id=27, 991.705pt x 569.12625pt>
 File: 3_features.png Graphic file (type png)
 
 <use 3_features.png>
-Package pdftex.def Info: 3_features.png used on input line 45.
+Package pdftex.def Info: 3_features.png used on input line 48.
 (pdftex.def)             Requested size: 187.78531pt x 107.76169pt.
 
 
 LaTeX Font Warning: Font shape `OT1/cmss/m/it' in size <10.95> not available
-(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 53.
+(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 56.
 
 [1
 
-{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map} <./2_features.png> <./3_fea
-tures.png>]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 66.
- [2]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 66.
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 70.
+ [2 <./2_features.png> <./3_features.png>]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 70.
  (./report.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 66.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 66.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 70.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 70.
 Package rerunfilecheck Info: File `report.out' has not changed.
 (rerunfilecheck)             Checksum: EDDAA492E2A37295333A3AE74C2EF1C3;222.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 66.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 70.
  ) 
 Here is how much of TeX's memory you used:
  6736 strings out of 493304
  101609 string characters out of 6139872
- 189405 words of memory out of 5000000
+ 191739 words of memory out of 5000000
  10140 multiletter control sequences out of 15000+600000
  9530 words of font info for 34 fonts, out of 8000000 for 9000
  957 hyphenation exceptions out of 8191
- 42i,7n,40p,511b,463s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 42i,7n,40p,527b,461s stack positions out of 5000i,500n,10000p,200000b,80000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb></us
 r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb></usr/shar
 e/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmss17.pfb></usr/share/texl
 ive/texmf-dist/fonts/type1/public/amsfonts/cm/cmssbx10.pfb></usr/share/texlive/
 texmf-dist/fonts/type1/public/amsfonts/cm/cmssi10.pfb>
-Output written on report.pdf (2 pages, 271019 bytes).
+Output written on report.pdf (2 pages, 271374 bytes).
 PDF statistics:
  66 PDF objects out of 1000 (max. 8388607)
  54 compressed objects within 1 object stream
