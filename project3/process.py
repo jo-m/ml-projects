@@ -4,21 +4,19 @@ import pandas as pd
 
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.cluster import KMeans
 from sklearn.mixture import GMM
 
 from datetime import datetime
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
 import xgboost as xgb
 
 import sklearn.cross_validation as skcv
 import sklearn.metrics as skmet
 from utils import *
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
 
 
 def load_data(train=True):
@@ -186,7 +184,7 @@ def score(Ytruth, Ypred):
 
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=3, n_jobs=-1)
+    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=3, n_jobs=1)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
 
@@ -218,14 +216,15 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        # 'reg__n_estimators': [1000, 2000, 4000, 5000],
-        # 'reg__learning_rate': [0.005, 0.008, 0.01, 0.015],
-        # 'reg__max_depth': [2, 3, 4],
-        # 'reg__subsample': [0.5, 0.6, 0.7, 0.8, 1]
+        'reg__n_estimators': [1000, 2000, 4000, 5000],
+        'reg__learning_rate': [0.005, 0.008, 0.01, 0.015],
+        'reg__max_depth': [2, 3, 4],
+        'reg__subsample': [0.5, 0.6, 0.7, 0.8, 1],
+        'selector__k': [10, 30, 60, 120, 300, 400, 600]
     }
 
 
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1, cv=3)
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=1, cv=3)
     grid.fit(X[:, 1:], Y)
 
     for p in parameters.keys():
@@ -235,33 +234,26 @@ def run_gridsearch(X, Y, model):
 
 
 def build_pipe():
-    trans = DifferentTransforms()
     scaler = Scaler
-    cluster = ClusterTransform()
 
-    # add svm and Random trees
-    # every next classifier uses the result of the previous one
-    svm = StackInstance(**{'classifier': SVC(C=1102, gamma=0.173)})
-    trees = StackInstance(**{'classifier': RandomForestClassifier(n_estimators=700)})
+    selector = SelectKBest(chi2)
 
     regressor = xgb.XGBClassifier()
 
     return Pipeline([
         ('scaler', scaler),
-        # ('trans', trans),
-        # ('cls', cluster),
-        # ('svm', svm),
-        # ('trees', trees),
+        ('selector', selector),
         ('reg', regressor),
     ])
 
 
 Xtrain, Ytrain = load_data()
 
-Scaler = StandardScaler()  # minmax is better for svm and Kmeans but worse for GMM
+Scaler = StandardScaler(with_mean=False)  # do not delete mean in order to have only positive numbers,
+                                          # required by chi2 score
 
 pipe = build_pipe()
 pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
-run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
+# run_crossval(Xtrain, Ytrain, pipe)
