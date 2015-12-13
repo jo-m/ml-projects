@@ -2,6 +2,7 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[pdftex]{hyperref}
+\usepackage{subcaption}
 
 % Lengths and indenting
 \setlength{\textwidth}{16.5cm}
@@ -17,46 +18,42 @@
 
 \renewcommand{\familydefault}{\sfdefault}
 
-\title{Machine Learning 2015: Project 3 - Report Template}
-\author{member1@student.ethz.ch\\ member2@student.ethz.ch\\ member3@student.ethz.ch\\}
+\title{Machine Learning 2015: Project 3 - Classification Report}
+\author{jo@student.ethz.ch\\ sakhadov@student.ethz.ch\\ kevinlu@student.ethz.ch\\}
 \date{\today}
 
 \begin{document}
 \maketitle
 
 \section*{Experimental Protocol}
-Suppose that someone wants to reproduce your results. Briefly describe the steps used to obtain the
-predictions starting from the  data set. The following
-sections are suggested to explain your methodology. Feel free to add sections,  graphs or screenshots if you think it's
-necessary. 
-Feel free to change the overall procedure you use to describe your
-methodology. 
-%The report should contain a maximum of 2 pages.
-Please keep the report in 4 pages, figures and references
-are not included in the space limit. 
+We used split-training (train on 80\%, test on 20\%) to select the best models. \\
+
+
+
 
 \section{Tools}
-Which tools and libraries have you used (e.g. Matlab, Python with scikit-learn, Java with Weka,
-SPSS, language x with library y, $\ldots$). If you have source-code (Matlab scripts, Python scripts, Java source folder, \dots),
-make sure to submit it on the project website together with this report. If you only used
-command-line or GUI-tools describe what you did.
+We used Python 2 with the machine learning library \textit{scikit-learn} and \textit{numpy}. For Gradient Boosting we used XGBoost python library.
 
 \section{Algorithm}
-Describe the algorithm you used.
+We first normalize all the features.\\
+The resulted features are used to train the XGBoost classifier.\\
 
-\section{Feature Engineering}
-Did you construct any new features? What feature transforms did you use?
-Did you do feature selection?   What kind of performance improvement 
-did you gain from each feature engineering technique? etc 
+\section{Features}
+For feature selection we used SelectKBest class implemented in sklearn library. With gridsearch we found around 130 features that carry the most information.\\
+As an additional feature for every nucleus image we tried to compute a coefficient which would describe best the symmetry and the boundary of every nucleus shape. From the nucleus masks we could see that the most of malignant cells have a much more smoother boundary than a nucleus of a benign cell. Our smoothness coefficient $s_c$ is computed as follows:
+
+\begin{equation}
+s_c = \frac{ Area_{nucleus} }{Area_{chull}}
+\end{equation}
+
+Where $Area_{chull}$ is the area of the convex hull of the nucleus.\\
+Additionally we erode every nucleus mask with a matlab function $imerode$ with a disk as the structuring element.\\
+
+Only using this feature we could already achieve up to $70\%$ accuracy.\\
+
+Furthermore, in order to measure the circularity of the nucleus shape we computed the relation between the shape area and its perimeter. This feature, however, did not give any substantial score improvement.
 
 \section{Parameters}
-How did you find the parameters of your model? (What parameters have you searched over, cross validation procedure, $\ldots$)
-
-\section{Lessons Learned} What other algorithms, tools or methods did you try out that didn't work well?
-Why do you think they performed worse than what you used for your final submission?
-
-\section*{References}
-
-Add references if needed. 
+We calibrated the parameters using grid search. For every possible set of parameters 10-fold cross-validation was performed to find the best generalizing parameters. To validate the model afterwards, a 10-fold cross-validation was applied together with a split-test, where we trained on 80\% of the data and tested on the other 20\%.
 
 \end{document}

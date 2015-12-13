@@ -184,7 +184,7 @@ def score(Ytruth, Ypred):
 
 def run_crossval(X, Y, model):
     scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=3, n_jobs=1)
+    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=3, n_jobs=-1)
     print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
 
 
@@ -216,15 +216,15 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': [1000, 2000, 4000, 5000],
-        'reg__learning_rate': [0.005, 0.008, 0.01, 0.015],
-        'reg__max_depth': [2, 3, 4],
-        'reg__subsample': [0.5, 0.6, 0.7, 0.8, 1],
-        'selector__k': [10, 30, 60, 120, 300, 400, 600]
+        'reg__n_estimators': [1250, 1500, 1750, 2500, 3000],
+        'reg__learning_rate': [0.001, 0.003, 0.005, 0.006],
+        'reg__max_depth': [4, 5, 7],
+        'reg__subsample': [0.6],
+        'selector__k': [113, 115, 120, 125, 128],
     }
 
 
-    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=1, cv=3)
+    grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1, cv=5)
     grid.fit(X[:, 1:], Y)
 
     for p in parameters.keys():
@@ -236,9 +236,8 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     scaler = Scaler
 
-    selector = SelectKBest(chi2)
-
-    regressor = xgb.XGBClassifier()
+    selector = SelectKBest(chi2, k=120)
+    regressor = xgb.XGBClassifier(n_estimators=1000, learning_rate=0.005, max_depth=4, subsample=0.5)
 
     return Pipeline([
         ('scaler', scaler),
