@@ -236,15 +236,14 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     scaler = Scaler
 
-    selector = SelectKBest(chi2, k=120)
-    regressor = xgb.XGBClassifier(n_estimators=1000, learning_rate=0.005, max_depth=4, subsample=0.5)
+    selector = SelectKBest(chi2, k=130)
+    regressor = xgb.XGBClassifier(n_estimators=1800, learning_rate=0.006, max_depth=8, subsample=0.7)
 
     return Pipeline([
-        ('scaler', scaler),
-        ('selector', selector),
+        # ('scaler', scaler),
+        # ('selector', selector),
         ('reg', regressor),
     ])
-
 
 Xtrain, Ytrain = load_data()
 
@@ -252,7 +251,7 @@ Scaler = StandardScaler(with_mean=False)  # do not delete mean in order to have 
                                           # required by chi2 score
 
 pipe = build_pipe()
-pipe = run_gridsearch(Xtrain, Ytrain, pipe)
+# pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_validate(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
 # run_crossval(Xtrain, Ytrain, pipe)

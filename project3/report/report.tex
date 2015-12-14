@@ -26,10 +26,7 @@
 \maketitle
 
 \section*{Experimental Protocol}
-We used split-training (train on 80\%, test on 20\%) to select the best models. \\
-
-
-
+We used split-training (train on 80\%, test on 20\%) and cross-validation to select the best models. \\
 
 \section{Tools}
 We used Python 2 with the machine learning library \textit{scikit-learn} and \textit{numpy}. For Gradient Boosting we used XGBoost python library.
@@ -46,12 +43,31 @@ As an additional feature for every nucleus image we tried to compute a coefficie
 s_c = \frac{ Area_{nucleus} }{Area_{chull}}
 \end{equation}
 
+
+\begin{figure}[!t!]
+ \centering 
+\begin{subfigure}[b]{0.4\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{benign.png} 
+	\caption{A benign cell nucleus with a larger chunk in the middle and a small piece in the upper right corner.}
+	\label{benign}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.4\textwidth}
+	\centering
+	\includegraphics[width=\textwidth]{malignant.png} 
+	\caption{A malignant cell nucleus with a compact round middle part and a small appendix in the bottom.}
+	\label{malignant}
+\end{subfigure}
+\caption{A benign cell nucleus on the left and a malignant on the right. Our smoothness coefficient would be similar for these two masks if computed directly. The convex hull of benign cell would be too large if compute it for the whole object. That is why we erode every image which either clears of smaller pieces or separates them from the main bulk of the nucleus. The convex hull is then computed separately for every object. This forces the smoothness coefficient to only depend on the shape of the main bulk of the nucleus. }
+\end{figure}
+
+
+
 Where $Area_{chull}$ is the area of the convex hull of the nucleus.\\
-Additionally we erode every nucleus mask with a matlab function $imerode$ with a disk as the structuring element.\\
+Additionally we erode every nucleus mask with a matlab function $imerode$ with a disk as the structuring element. With this we try to separate nucleus mask image in several pieces in order to better compute the convex hull on separate objects. This allows to better differentiate between the compact malignant nucleus with a small appendix(Figure \ref{malignant}) and a spread benign nucleus (Figure \ref{benign}).\\
 
-Only using this feature we could already achieve up to $70\%$ accuracy.\\
-
-Furthermore, in order to measure the circularity of the nucleus shape we computed the relation between the shape area and its perimeter. This feature, however, did not give any substantial score improvement.
+Furthermore, in order to measure the circularity of the nucleus shape we computed the relation between the shape area and its perimeter. This feature, however, did not give any substantial score improvement.\\
 
 \section{Parameters}
 We calibrated the parameters using grid search. For every possible set of parameters 10-fold cross-validation was performed to find the best generalizing parameters. To validate the model afterwards, a 10-fold cross-validation was applied together with a split-test, where we trained on 80\% of the data and tested on the other 20\%.
