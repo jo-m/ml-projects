@@ -18,6 +18,8 @@ from utils import *
 from sklearn.feature_selection import SelectKBest
 from sklearn.feature_selection import chi2
 
+from sklearn.cross_validation import KFold
+
 
 def load_data(train=True):
     if train:
@@ -44,132 +46,6 @@ def load_data(train=True):
     return dataT, Y
 
 
-# unsupervised classifier
-# use clustering on all unsupervised data to produce one more feature
-class ClusterTransform():
-    def __init__(self, n_clusters=3, n_jobs=-1, tol=1e-3, min_covar=1e-3, covariance_type='tied',
-                 **kwaargs):
-        self.n_clusters = n_clusters
-        self.n_jobs = n_jobs
-        self.X_TEST, _ = load_data(False)
-
-        xTrain = Xtrain[:, 1:]
-        xTrain = DifferentTransforms().transform(xTrain)
-        xTrain = Scaler.fit_transform(xTrain)
-        cluster_means = np.array([xTrain[Ytrain == i].mean(axis=0)
-                                  for i in xrange(n_clusters)])
-
-        self.clusterizer = GMM(n_components=n_clusters, init_params='wc', params='wmc',
-                   # allowing to adjust means helps to avoid overfitting
-                   covariance_type=covariance_type, min_covar=min_covar, thresh=tol)
-        self.clusterizer.means_ = cluster_means
-
-    def set_params(self, **params):
-        self.clusterizer.set_params(**params)
-
-    # use all x to train cluster
-    def fit(self, X, _):
-        xTest = self.X_TEST
-        xTest = xTest[:, 1:]
-        xTest = DifferentTransforms().transform(xTest)
-        xTest = Scaler.fit_transform(xTest)
-
-        Xtotal = np.vstack((X, xTest))
-        self.clusterizer.fit(Xtotal)
-        return self
-
-    # add the predicted cluster labels as a feature vector
-    # binarize the labels
-    def transform(self, X):
-        xFeat = self.clusterizer.predict(X)
-        xFeat = np.atleast_2d(xFeat).T
-        xFeat = OneHotEncoder(sparse=False).fit_transform(xFeat)
-        xRes = np.hstack((X, xFeat))
-        return xRes
-
-    def predict(self, X):
-        return self.clusterizer.predict(X)
-
-    # not sure why this is needed
-    def score(self, X, Y):
-        return score(self.predict(X), Y)
-
-    def get_params(self, deep=True):
-        return self.clusterizer.get_params(deep=deep)
-
-
-# supervised classifier
-class StackInstance():
-    def __init__(self, **kwargs):
-        self.classifier = kwargs.get('classifier')
-
-    def set_params(self, **params):
-        params.pop('classifier', None)
-        self.classifier.set_params(**params)
-
-    def fit(self, X, Y):
-        self.classifier.fit(X, Y)
-        return self
-
-    # add the predicted labels as a feature vector
-    # binarize the labels
-    def transform(self, X):
-        xFeat = self.classifier.predict(X)
-        xFeat = np.atleast_2d(xFeat).T
-        xFeat = OneHotEncoder(sparse=False).fit_transform(xFeat)
-        xRes = np.hstack((X, xFeat))
-        return xRes
-
-    def predict(self, X):
-        return self.classifier.predict(X)
-
-    def score(self, X, Y):
-        return score(self.predict(X), Y)
-
-    def get_params(self, deep=True):
-        dic = self.classifier.get_params(deep=deep)
-        dic['classifier'] = self.classifier
-        return dic
-
-
-class DifferentTransforms():
-    def __init__(self, featureDel=4, **kwargs):
-        self.featureDel = featureDel
-
-    def fit(self, X, Y):
-        return self
-
-    def transform(self, X):
-        # delete useless frequency
-        return np.delete(X, self.featureDel, 1)
-
-    def get_params(self, **kwargs):
-        return dict({'featureDel': self.featureDel})
-
-    def set_params(self, **params):
-        for key in params:
-            if key == 'featureDel':
-                self.featureDel = params[key]
-                break
-
-
-# delete outliers, boundaries were defined visually
-def delOutliers(Xtrain, Ytrain):
-    outliers = []
-    bounds = [100, 4.5, 4, 3.8, 5, 6, 5, 7]
-    xTrain = Scaler.fit_transform(Xtrain)
-    for row in range(0, xTrain.shape[0]):
-        for col in range(1, xTrain.shape[1]):  # zeros column ids
-            if xTrain[row, col] > bounds[col]:
-                outliers.append(row)
-                break
-
-    Xtrain = np.delete(Xtrain, outliers, 0)
-    Ytrain = np.delete(Ytrain, outliers, 0)
-
-    return Xtrain, Ytrain
-
-
 def score(Ytruth, Ypred):
     Ytruth = Ytruth.ravel()
     Ypred = Ypred.ravel()
@@ -183,17 +59,23 @@ def score(Ytruth, Ypred):
 
 
 def run_crossval(X, Y, model):
-    scorefun = skmet.make_scorer(score)
-    scores = skcv.cross_val_score(model, X[:, 1:], Y, scoring=scorefun, cv=3, n_jobs=-1)
-    print 'C-V score =', np.mean(scores), '+/-', np.std(scores)
-
+    scores = []
+    kf = KFold(X.shape[0], n_folds=10)
+    for train, test in kf:
+        model.fit(X[train], Y[train])
+        Ypred = model.predict(X[test])
+        scores.append(score(Y[test], Ypred))
+    print 'C-V score %s' % (str(np.mean(scores)))
+    print 'std %s' % str(np.std(scores))
 
 def run_split(X, Y, model):
-    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.8)
+    Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.9)
     Xtrain, Xtest = Xtrain[:, 1:], Xtest[:, 1:]
     model.fit(Xtrain, Ytrain)
     Ypred = model.predict(Xtest)
-    print "Split-score = %f" % score(Ypred, Ytest)
+    scored = score(Ypred, Ytest)
+    print "Split-score = %f" % scored
+    return scored
 
 
 def write_Y(Y):
@@ -216,11 +98,11 @@ def run_validate(Xtrain, Ytrain, model):
 
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': [1250, 1500, 1750, 2500, 3000],
-        'reg__learning_rate': [0.001, 0.003, 0.005, 0.006],
-        'reg__max_depth': [4, 5, 7],
-        'reg__subsample': [0.6],
-        'selector__k': [113, 115, 120, 125, 128],
+        'reg__n_estimators': [500, 1250, 1500, 1750, 2500, 3000],
+        'reg__learning_rate': [0.001, 0.003, 0.005, 0.006, 0.01],
+        'reg__max_depth': [3, 5, 7, 9],
+        'reg__subsample': [0.5, 0.7, 0.9],
+        'selector__k': [100, 120, 150, 200, 300, 400, X.shape[1]],
     }
 
 
@@ -236,7 +118,7 @@ def run_gridsearch(X, Y, model):
 def build_pipe():
     scaler = Scaler
 
-    selector = SelectKBest(chi2, k=130)
+    selector = SelectKBest(chi2, k=120)
     regressor = xgb.XGBClassifier(n_estimators=1800, learning_rate=0.006, max_depth=8, subsample=0.7)
 
     return Pipeline([
@@ -252,6 +134,7 @@ Scaler = StandardScaler(with_mean=False)  # do not delete mean in order to have 
 
 pipe = build_pipe()
 # pipe = run_gridsearch(Xtrain, Ytrain, pipe)
-run_validate(Xtrain, Ytrain, pipe)
+run_crossval(Xtrain, Ytrain, pipe)
 run_split(Xtrain, Ytrain, pipe)
-# run_crossval(Xtrain, Ytrain, pipe)
+run_validate(Xtrain, Ytrain, pipe)
+
