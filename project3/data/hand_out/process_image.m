@@ -13,7 +13,7 @@ phog_feat = phog_feat / sum(phog_feat);
 sig_1D = sig_1D / sum(sig_1D);
 
 % add curvature measure
-% area of the image over area of the convex hull
+% area of the image over the area of the convex hull
 % should be larger for symmetrical images, i.e. malignant cells
 
 compl = imcomplement(mask_png);
@@ -22,9 +22,7 @@ se = strel('disk',2);
 erodedI = imerode(compl,se);
 area_rel = bwarea(erodedI)/ bwarea(bwconvhull(erodedI, 'object', 4));
 
-% pause;
-
-% measure the circularity by Perimeter/Area
+% measure the circularity by relation Perimeter/Area
  CC=bwconncomp(compl);
  stats = regionprops(CC, 'all');
  perimeter = [stats.Perimeter];
