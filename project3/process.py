@@ -4,9 +4,8 @@ import pandas as pd
 
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.mixture import GMM
 
 from datetime import datetime
 
@@ -28,8 +27,8 @@ def load_data(train=True):
         fname = 'data/test_validate.csv'
 
     dataT = pd.read_csv(fname,
-                       index_col=None,
-                       header=None)
+                        index_col=None,
+                        header=None)
 
     dataT = dataT.as_matrix().astype(float)
     if train:
@@ -37,8 +36,8 @@ def load_data(train=True):
     if train:
         name = 'data/train_labels.csv'
         Y = pd.read_csv(name,
-                       index_col=None,
-                       header=None)
+                        index_col=None,
+                        header=None)
         # labels also have index as the first column
         Y = Y[1].as_matrix().astype(int)
     else:
@@ -64,9 +63,11 @@ def run_crossval(X, Y, model):
     for train, test in kf:
         model.fit(X[train], Y[train])
         Ypred = model.predict(X[test])
-        scores.append(score(Y[test], Ypred))
+        sc = score(Y[test], Ypred)
+        scores.append(sc)
     print 'C-V score %s' % (str(np.mean(scores)))
     print 'std %s' % str(np.std(scores))
+
 
 def run_split(X, Y, model):
     Xtrain, Xtest, Ytrain, Ytest = skcv.train_test_split(X, Y, train_size=.9)
@@ -96,15 +97,15 @@ def run_validate(Xtrain, Ytrain, model):
     write_Y(ret)
     print 'wrote validate'
 
+
 def run_gridsearch(X, Y, model):
     parameters = {
-        'reg__n_estimators': [500, 1250, 1500, 1750, 2500, 3000],
+        'reg__n_estimators': [300, 500, 1250, 1500, 1750, 2500, 3000],
         'reg__learning_rate': [0.001, 0.003, 0.005, 0.006, 0.01],
         'reg__max_depth': [3, 5, 7, 9],
         'reg__subsample': [0.5, 0.7, 0.9],
-        'selector__k': [100, 120, 150, 200, 300, 400, X.shape[1]],
+        'selector__k': [100, 120, 150, 200, 300, 400, 'all'],
     }
-
 
     grid = GridSearchCV(model, parameters, verbose=1, n_jobs=-1, cv=5)
     grid.fit(X[:, 1:], Y)
@@ -119,19 +120,19 @@ def build_pipe():
     scaler = Scaler
 
     selector = SelectKBest(chi2, k=120)
-    regressor = xgb.XGBClassifier(n_estimators=1800, learning_rate=0.006, max_depth=8, subsample=0.7)
+    regressor = xgb.XGBClassifier(n_estimators=500, learning_rate=0.01, max_depth=5, subsample=0.5)
 
     return Pipeline([
-        # ('scaler', scaler),
-        # ('selector', selector),
+        ('scaler', scaler),
+        ('selector', selector),
         ('reg', regressor),
     ])
 
+
 Xtrain, Ytrain = load_data()
 
-Scaler = StandardScaler(with_mean=False)  # do not delete mean in order to have only positive numbers,
-                                          # required by chi2 score
-
+Scaler = StandardScaler(with_mean=False)  # do not subtract the mean,
+                                            # chi2 does not accept negative numbers
 pipe = build_pipe()
 # pipe = run_gridsearch(Xtrain, Ytrain, pipe)
 run_crossval(Xtrain, Ytrain, pipe)
